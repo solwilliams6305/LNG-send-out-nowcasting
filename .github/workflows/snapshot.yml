@@ -1,0 +1,55 @@
+# Twice-daily revision-logger snapshots, committed back to the repo
+# ("git scraping"): the repo history itself becomes the archive of what
+# ALSI/ENTSOG claimed at each point in time.
+#
+# Cron is UTC. 18:45 & 22:15 UTC land after ALSI's 19:30 CET first publication
+# and 23:00 CET late-reporter pass respectively, in both CET and CEST.
+# GitHub cron can drift by some minutes under load; snapshot rows carry their
+# own timestamps, so drift is harmless.
+#
+# Setup: repo secret ALSI_KEY (Settings -> Secrets -> Actions), and commit a
+# data/reference/alsi_facilities.json produced by scripts/bootstrap_alsi.py.
+# Without the secret the ENTSOG side still logs — do not gate the job on it.
+
+name: snapshot
+
+on:
+  schedule:
+    - cron: "45 18 * * *"
+    - cron: "15 22 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install --quiet -e .
+
+      - name: Snapshot
+        env:
+          ALSI_KEY: ${{ secrets.ALSI_KEY }}
+        run: python scripts/snapshot_daily.py
+
+      - name: Commit snapshots
+        run: |
+          git config user.name "snapshot-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/snapshots
+          git commit -m "snapshot $(date -u +%Y-%m-%dT%H:%M)Z" || echo "nothing new"
+          git pull --rebase origin main
+          git push

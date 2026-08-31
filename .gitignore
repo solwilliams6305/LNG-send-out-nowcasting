@@ -1,0 +1,16 @@
+# environment & secrets
+.venv/
+.env
+
+# bulk local data (snapshots + reference ARE committed — they are the archive)
+data/raw/
+
+# python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# outputs & OS noise
+reports/
+.DS_Store
+.ipynb_checkpoints/

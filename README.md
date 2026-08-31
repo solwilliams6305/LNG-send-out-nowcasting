@@ -1,0 +1,133 @@
+# lng-nowcast
+
+Reconstructing the daily gas send-out of NW-European LNG terminals — a direct
+short-term driver of TTF/NBP prices — from **free public physical data**
+(ship-tracking, terminal inventories, pipeline flows), ahead of and independently
+of the officially confirmed figures.
+
+The commercial vendors (Kpler, Vortexa, ICIS) sell this signal from proprietary
+AIS networks. The point here is not to out-scale them but to do two things they
+skip, in the open: **model the revision process of the official data itself**
+(ALSI's Estimated→Confirmed corrections), and publish **calibrated uncertainty**
+rather than point estimates — checked against later-published ground truth.
+
+## Findings log
+
+*2026-09-01 (day one)* — verified live against the APIs:
+
+- **ENTSOG beats ALSI by ~10 hours.** Daily physical flow for gas day *D*
+  appears on ENTSOG ~09:20 CET on *D+1* for NW-EU TSOs; ALSI's official
+  publication for the same day is 19:30 CET (with a 23:00 late-reporter pass).
+- **Hourly flows trail real time by ~2 hours** at GTS points (Gate, Eems), so an
+  intraday estimate of the *current* gas day is feasible — the nowcast horizon
+  can move inside the gas day, not just ahead of the evening print.
+- **Day-ahead nominations are public.** The nomination for gas day *D* appears
+  ~16:00 CET on *D−1* (e.g. Gate: 406.7 GWh nominated for 2026-09-01, published
+  2026-08-31 16:04). Free forward-looking input for the filter.
+- **UK is the laggard**: National Gas rows on ENTSOG are backfilled ~6 days
+  late, in batches. Near-real-time UK needs ALSI (19:30) or National Gas's own
+  portal (TODO). Grain at exactly 0 for days at a stretch is *genuine* summer
+  idling, not missing data.
+- **ALSI inventory is a volume** (10³ m³ LNG), send-out an energy (GWh/d) — the
+  volume→energy conversion (GCV × density, cargo-composition-dependent) is part
+  of the inference problem, not bookkeeping.
+
+## Layout
+
+```
+lng_nowcast/           the package
+  terminals.py         registry: ENTSOG point IDs (verified live), ALSI name
+                       patterns, approx coordinates for AIS polygons
+  entsog.py            ENTSOG client — daily/hourly flows + nominations, no key
+  alsi.py              GIE ALSI client — inventory/send-out/status, free key
+  physics.py           conversion constants with uncertainty ranges
+  snapshot.py          the revision logger (see below)
+scripts/
+  snapshot_daily.py    twice-daily snapshot entrypoint (cron / Actions)
+  backfill_entsog.py   historical daily flows → data/raw/
+  bootstrap_alsi.py    resolve ALSI facility EICs from the live listing (once)
+  eda_overview.py      small-multiples overview chart → reports/
+data/
+  snapshots/           committed — the accumulating revision archive
+  reference/           committed — resolved facility registry
+  raw/                 gitignored — bulk backfills (reproducible)
+```
+
+## The revision logger (start this before anything else)
+
+ALSI rows carry `status` E/C (estimated/confirmed) and operators retroactively
+correct values at any time; neither GIE nor ENTSOG archives its own past states.
+So the Estimated→Confirmed process — the gap this project trades on — is only
+observable **live**. `scripts/snapshot_daily.py` therefore re-fetches a trailing
+45-day window twice a day and archives what each source *currently* claims, so
+every revision is captured with timestamps on both sides.
+
+Run it via GitHub Actions (survives laptops being closed): push this repo to
+GitHub, add repo secret `ALSI_KEY`, and `.github/workflows/snapshot.yml` commits
+snapshots back to the repo at 18:45 & 22:15 UTC daily — after ALSI's 19:30 CET
+and 23:00 CET publications in both winter and summer time. The ENTSOG side logs
+even while the ALSI key is missing.
+
+## Setup
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -e '.[viz]'
+cp .env.example .env       # then fill in keys as you get them
+```
+
+Keys (all free): **ALSI** — register at <https://alsi.gie.eu/account>, key is on
+the API page; **aisstream.io** — needed from week 3; **ENTSO-E** token — needed
+for the price event study.
+
+```bash
+.venv/bin/python scripts/backfill_entsog.py --start 2024-01-01   # history
+.venv/bin/python scripts/bootstrap_alsi.py                       # once, with key
+.venv/bin/python scripts/snapshot_daily.py                       # one snapshot
+.venv/bin/python scripts/eda_overview.py                         # chart
+```
+
+## Model (target state)
+
+Per terminal, a slow–fast state-space model on gas-day resolution:
+
+- slow state: tank inventory `I_t` (energy units after conversion)
+- fast flow: send-out `S_t`; jump input: cargo arrivals `A_t` from AIS berth +
+  draught-delta events
+- dynamics: `I_{t+1} = I_t + A_t − S_t − boil-off`
+- observations: ALSI inventory & send-out (noisy, *revised*), ENTSOG flows
+  (noisy, partial), AIS arrival energy (draught error, heel, GCV)
+- inference: particle / ensemble Kalman filter → daily posterior over `S_t`
+  ahead of confirmation; non-Gaussianity from jump arrivals and heavy-tailed
+  reporting errors
+
+Validation: nowcast vs later-**Confirmed** ALSI; triangulation across the three
+near-independent measurements; calibration (do 90% intervals cover 90%?).
+
+## Roadmap
+
+- [x] W1: ENTSOG ingestion verified live; registry of 12 terminals; backfill
+- [x] W1: revision logger written; Actions workflow ready
+- [ ] W1: ALSI key → `bootstrap_alsi.py` → logger fully armed
+- [ ] W2: revision-process EDA as snapshots accumulate; National Gas UK feed
+- [ ] W3–4: AIS layer (aisstream.io): berth polygons, draught deltas → arrivals
+- [ ] W5–6: state-space filter; intraday nowcast at the 19:30 CET horizon
+- [ ] W7–8: validation, calibration, TTF event study; write-up
+
+## Honest caveats
+
+- Kpler/Vortexa/ICIS sell commercial versions of the level signal from
+  proprietary AIS networks. The open contribution is the reconstruction from
+  free data plus the revision/uncertainty layers they don't publish.
+- Free AIS coverage has gaps; draught is hand-entered and laggy. If it proves
+  too sparse, the project degrades gracefully to the ALSI+ENTSOG fusion problem.
+- **Not retail-tradable**: ICE TTF futures granularity (~720 MWh/month) is far
+  beyond a student account; this is a research signal, not a trading system.
+- If ALSI revisions turn out tiny/instant, the headline pivots to
+  revision-prediction and the ENTSOG-lead-time result — measured either way.
+
+## Attribution
+
+LNG inventory/send-out data: **GIE ALSI** (<https://alsi.gie.eu>) — GIE requires
+naming them as source when data is used or repackaged. Flow and nomination data:
+**ENTSOG Transparency Platform** (<https://transparency.entsog.eu>). This
+project redistributes snapshots solely for research reproducibility.

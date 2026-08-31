@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lng-nowcast"
+version = "0.1.0"
+description = "Nowcasting NW-European LNG terminal send-out from free public data"
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.31",
+    "pandas>=2.0",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+viz = ["matplotlib>=3.8"]
+
+[tool.setuptools]
+packages = ["lng_nowcast"]
