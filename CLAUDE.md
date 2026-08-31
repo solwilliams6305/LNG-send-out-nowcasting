@@ -49,6 +49,13 @@ system; keep the honest-caveats section of README.md intact.
   milford_haven = south_hook + dragon. UK gas day 05:00 local = EU 06:00 CET
   at the same UTC instant year-round, so gas_day labels align with ENTSOG.
   Intraday TODO: /api/gas-system-status-data POST payload undiscovered.
+- UK revision structure (quantified 2026-09-02, scripts/revision_report_uk.py):
+  D+2 items republished ~30d later usually unchanged (median Δ=0); "M+15"
+  items publish at ~M+1 and NEVER differ from final D+2 — drop them from
+  models; D+1 physical ≈ final on 99%+ of days (p99 0.02 GWh); heavy tail up
+  to 662.7 GWh. Canonical anomaly: Grain 2025-04-21 (physical+ENTSOG ~662,
+  commercial finalized 0). Stocks occasionally corrected next day (up to
+  340 GWh). Publication lags have tails (that D+1 came 3 days late).
 
 ## Conventions
 

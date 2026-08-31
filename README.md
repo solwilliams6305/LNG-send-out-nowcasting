@@ -59,6 +59,26 @@ rather than point estimates — checked against later-published ground truth.
 - Gas-day alignment is exact: UK 05:00 local ≡ EU 06:00 CET at the same UTC
   instant year-round, so UK rows line up with ENTSOG's with no shift.
 
+*2026-09-02 (UK revision process quantified, from the retroactive
+all-versions pull — 17,628 published versions, 2024→today)*:
+
+- **27.8% of UK values get republished, but the median republication changes
+  nothing**: D+2 commercial values are systematically re-issued ~30 days later,
+  almost always bit-identical. The heavy tail is real — |Δ| up to 662.7 GWh
+  (send-out) and 340 GWh (tank stock, corrected next day).
+- **The "M+15" items actually publish at ~M+1 and never differ from final D+2**
+  (max |Δ| = 0.00 across 2,829 matched days): the ladder's last rung carries no
+  information, and UK values reach finality ~1 month after the gas day.
+- **D+1 physical ≈ final commercial on 99%+ of days** (p99 |Δ| = 0.02 GWh): the
+  next-morning physical print is an excellent proxy for final truth — except
+  for rare large breaks, which is the whole game.
+- Showcase anomaly, **Grain 2025-04-21**: D+1 physical and ENTSOG both record
+  ~662 GWh (near max send-out); the commercial series initially agreed, then
+  was retracted to 0.0 a month later and finalized at zero. The official record
+  permanently disagrees with itself by a full day of near-max flow — and that
+  day's D+1 also published 3 days late. This is why the filter carries
+  heavy-tailed observation errors and three-way triangulation.
+
 ## Layout
 
 ```
