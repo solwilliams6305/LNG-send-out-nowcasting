@@ -45,6 +45,20 @@ rather than point estimates — checked against later-published ground truth.
   anymore. UK ground truth must come from National Gas's data portal; ENTSOG's
   UK rows lag ~6 days. Le Havre stopped reporting 2026-01-21.
 
+*2026-09-02 (National Gas portal cracked)*:
+
+- The portal's SPA API (`POST /api/find-gas-data`, keyless) serves per-terminal
+  UK data **richer than ALSI ever was**: send-out at three maturities — D+1
+  physical (generated ~12:01 next day), D+2 commercial, M+15 reconciliation —
+  a *built-in revision ladder*; opening tank stocks (generated ~15:56 same
+  day); storage in/outflows (cargo discharges appear as inflows); prevailing
+  nominations; per-terminal calorific values; and a Grain boil-off nomination.
+- `latestFlag=N` returns **every historical published version** of every value
+  — the UK revision history is reconstructable retroactively, no live logging
+  required (unlike ALSI, where the archive only accumulates forward).
+- Gas-day alignment is exact: UK 05:00 local ≡ EU 06:00 CET at the same UTC
+  instant year-round, so UK rows line up with ENTSOG's with no shift.
+
 ## Layout
 
 ```
@@ -119,9 +133,10 @@ near-independent measurements; calibration (do 90% intervals cover 90%?).
 ## Roadmap
 
 - [x] W1: ENTSOG ingestion verified live; registry of 12 terminals; backfill
-- [x] W1: revision logger written; Actions workflow ready
-- [ ] W1: ALSI key → `bootstrap_alsi.py` → logger fully armed
-- [ ] W2: revision-process EDA as snapshots accumulate; National Gas UK feed
+- [x] W1: revision logger written; Actions workflow live in the cloud (3×/day)
+- [x] W1: ALSI key armed; first full snapshots committed
+- [x] W2: National Gas UK client (send-out ladder, stocks, flows, nominations)
+- [ ] W2: revision-process EDA as snapshots accumulate; UK all-versions pull
 - [ ] W3–4: AIS layer (aisstream.io): berth polygons, draught deltas → arrivals
 - [ ] W5–6: state-space filter; intraday nowcast at the 19:30 CET horizon
 - [ ] W7–8: validation, calibration, TTF event study; write-up

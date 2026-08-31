@@ -23,7 +23,7 @@ import json
 
 import pandas as pd
 
-from . import alsi, config, entsog
+from . import alsi, config, entsog, nationalgas
 from .terminals import TERMINALS, tier
 
 ENTSOG_COLS = [
@@ -36,6 +36,10 @@ ALSI_COLS = [
     "facility_name", "inventory_1e3m3", "inventory_gwh", "send_out_gwh_d",
     "dtmi_1e3m3", "dtmi_gwh", "dtrs_gwh_d", "contracted_capacity",
     "available_capacity", "status", "updated_at", "latitude", "longitude", "info",
+]
+NATIONALGAS_COLS = [
+    "snapshot_utc", "terminal", "metric", "maturity", "pub_id", "gas_day",
+    "value", "unit", "quality", "generated_at", "detail", "item_name",
 ]
 
 
@@ -72,7 +76,8 @@ def run(window_days: int = 45, include_hourly: bool = True) -> dict:
     start = today - dt.timedelta(days=window_days)
 
     manifest = {"snapshot_utc": snap, "entsog_rows": 0, "entsog_hourly_rows": 0,
-                "alsi_rows": 0, "alsi_key_present": bool(config.ALSI_KEY), "errors": ""}
+                "alsi_rows": 0, "nationalgas_rows": 0,
+                "alsi_key_present": bool(config.ALSI_KEY), "errors": ""}
     errors: list[str] = []
 
     # --- ENTSOG daily: Physical Flow + Nomination for every registered point ---
@@ -119,6 +124,17 @@ def run(window_days: int = 45, include_hourly: bool = True) -> dict:
             manifest["alsi_rows"] = _write(arows, ALSI_COLS, d / f"{stamp}.csv")
         except Exception as e:
             errors.append(f"alsi: {e}")
+
+    # --- National Gas (UK): send-out ladder, stocks, flows, nominations, CV ---
+    try:
+        grows = nationalgas.fetch_all(start, today + dt.timedelta(days=1))
+        for r in grows:
+            r["snapshot_utc"] = snap
+        d = config.SNAPSHOT_DIR / "nationalgas"
+        d.mkdir(exist_ok=True)
+        manifest["nationalgas_rows"] = _write(grows, NATIONALGAS_COLS, d / f"{stamp}.csv")
+    except Exception as e:
+        errors.append(f"nationalgas: {e}")
 
     manifest["errors"] = "; ".join(errors)
     mpath = config.SNAPSHOT_DIR / "manifest.csv"

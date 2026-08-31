@@ -24,13 +24,14 @@ def main() -> int:
     m = snapshot.run(window_days=args.window_days, include_hourly=not args.skip_hourly)
     print(
         f"snapshot {m['snapshot_utc']}: entsog={m['entsog_rows']} rows, "
-        f"hourly={m['entsog_hourly_rows']}, alsi={m['alsi_rows']} "
-        f"(key present: {m['alsi_key_present']})"
+        f"hourly={m['entsog_hourly_rows']}, alsi={m['alsi_rows']}, "
+        f"nationalgas={m['nationalgas_rows']} (ALSI key present: {m['alsi_key_present']})"
     )
     if m["errors"]:
         print(f"errors: {m['errors']}", file=sys.stderr)
     # Fail the job only if nothing at all was captured.
-    total = m["entsog_rows"] + m["entsog_hourly_rows"] + m["alsi_rows"]
+    total = (m["entsog_rows"] + m["entsog_hourly_rows"] + m["alsi_rows"]
+             + m["nationalgas_rows"])
     return 0 if total > 0 else 1
 
 

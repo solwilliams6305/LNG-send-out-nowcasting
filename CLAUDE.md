@@ -39,6 +39,16 @@ system; keep the honest-caveats section of README.md intact.
   → National Gas data portal (W2 priority); ENTSOG UK lags ~6 days.
 - Mukran: two ENTSOG TSO rows for one point — sum them.
 - His GIE key also unlocks AGSI (storage) — covariate for the W7 event study.
+- National Gas portal (UK, keyless): POST data.nationalgas.com/api/find-gas-data
+  with {latestFlag, applicableFor, dateFrom, dateTo, dateType:"GASDAY",
+  ids:"PUBOB..,.."}; item registry in lng_nowcast/nationalgas.py (send-out at
+  D+1/D+2/M+15 maturities, stocks, in/outflows, nominations, CV, Grain
+  boil-off). latestFlag=N → all historical published versions (retroactive
+  revision history). Values kWh (unit string "kw/h"). D+1 send-out generated
+  ~12:01 next day; stock ~15:56 same day. Grain = NTS1+NTS2 summed; ENTSOG
+  milford_haven = south_hook + dragon. UK gas day 05:00 local = EU 06:00 CET
+  at the same UTC instant year-round, so gas_day labels align with ENTSOG.
+  Intraday TODO: /api/gas-system-status-data POST payload undiscovered.
 
 ## Conventions
 
