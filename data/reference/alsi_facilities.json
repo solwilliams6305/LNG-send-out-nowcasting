@@ -1,0 +1,161 @@
+{
+  "gate": [
+    {
+      "facility_name": "Rotterdam Gate Terminal",
+      "facility_eic": "21W0000000000079",
+      "facility_type": "LAND",
+      "country": "NL",
+      "company_name": "Gate Terminal B.V.",
+      "company_eic": "21X000000001063H",
+      "url": "https://alsi.gie.eu/api?country=NL&company=21X000000001063H&facility=21W0000000000079"
+    }
+  ],
+  "eems": [
+    {
+      "facility_name": "EemsEnergy LNG Terminal (FSRU Eemshaven LNG)",
+      "facility_eic": "52W000000000001W",
+      "facility_type": "FSRU",
+      "country": "NL",
+      "company_name": "EemsEnergy Terminal B.V.",
+      "company_eic": "52X000000000088H",
+      "url": "https://alsi.gie.eu/api?country=NL&company=52X000000000088H&facility=52W000000000001W"
+    }
+  ],
+  "zeebrugge": [
+    {
+      "facility_name": "Zeebrugge LNG Terminal",
+      "facility_eic": "21W0000000001245",
+      "facility_type": "LAND",
+      "country": "BE",
+      "company_name": "Fluxys LNG S.A.",
+      "company_eic": "21X000000001006T",
+      "url": "https://alsi.gie.eu/api?country=BE&company=21X000000001006T&facility=21W0000000001245"
+    }
+  ],
+  "dunkerque": [
+    {
+      "facility_name": "Dunkerque LNG Terminal",
+      "facility_eic": "21W0000000000451",
+      "facility_type": "LAND",
+      "country": "FR",
+      "company_name": "SAS Dunkerque LNG",
+      "company_eic": "21X000000001331I",
+      "url": "https://alsi.gie.eu/api?country=FR&company=21X000000001331I&facility=21W0000000000451"
+    }
+  ],
+  "grain": [
+    {
+      "facility_name": "Isle of Grain LNG Terminal (Post-Brexit)",
+      "facility_eic": "21W000000000099F",
+      "facility_type": "LAND",
+      "country": "GB*",
+      "company_name": "National Grid Gas plc / Grain LNG",
+      "company_eic": "21X-GB-A-A0A0A-7",
+      "url": "https://alsi.gie.eu/api?country=GB*&company=21X-GB-A-A0A0A-7&facility=21W000000000099F"
+    },
+    {
+      "facility_name": "Isle of Grain LNG Terminal",
+      "facility_eic": "21W000000000099F",
+      "facility_type": "LAND",
+      "country": "GB",
+      "company_name": "National Grid Gas plc / Grain LNG",
+      "company_eic": "21X-GB-A-A0A0A-7",
+      "url": "https://alsi.gie.eu/api?country=GB&company=21X-GB-A-A0A0A-7&facility=21W000000000099F"
+    }
+  ],
+  "milford_haven": [
+    {
+      "facility_name": "South Hook LNG Terminal (Post-Brexit)",
+      "facility_eic": "21W0000000000419",
+      "facility_type": "LAND",
+      "country": "GB*",
+      "company_name": "South Hook LNG Terminal Company Ltd.",
+      "company_eic": "21X0000000013554",
+      "url": "https://alsi.gie.eu/api?country=GB*&company=21X0000000013554&facility=21W0000000000419"
+    },
+    {
+      "facility_name": "South Hook LNG Terminal",
+      "facility_eic": "21W0000000000419",
+      "facility_type": "LAND",
+      "country": "GB",
+      "company_name": "South Hook LNG Terminal Company Ltd.",
+      "company_eic": "21X0000000013554",
+      "url": "https://alsi.gie.eu/api?country=GB&company=21X0000000013554&facility=21W0000000000419"
+    }
+  ],
+  "montoir": [
+    {
+      "facility_name": "Montoir de Bretagne LNG Terminal",
+      "facility_eic": "63W631527814486R",
+      "facility_type": "LAND",
+      "country": "FR",
+      "company_name": "Elengy S.A.",
+      "company_eic": "21X0000000010679",
+      "url": "https://alsi.gie.eu/api?country=FR&company=21X0000000010679&facility=63W631527814486R"
+    }
+  ],
+  "lehavre": [
+    {
+      "facility_name": "Le Havre LNG Terminal (FSRU Cape Ann)",
+      "facility_eic": "63W835858561887S",
+      "facility_type": "FSRU",
+      "country": "FR",
+      "company_name": "TotalEnergies LNG Services France",
+      "company_eic": "63X218318139939Y",
+      "url": "https://alsi.gie.eu/api?country=FR&company=63X218318139939Y&facility=63W835858561887S"
+    }
+  ],
+  "wilhelmshaven": [
+    {
+      "facility_name": "Wilhelmshaven LNG Terminal 1 (FSRU Hoegh Esperanza)",
+      "facility_eic": "21W000000000129W",
+      "facility_type": "FSRU",
+      "country": "DE",
+      "company_name": "Deutsche Energy Terminal GmbH",
+      "company_eic": "21X000000001403J",
+      "url": "https://alsi.gie.eu/api?country=DE&company=21X000000001403J&facility=21W000000000129W"
+    },
+    {
+      "facility_name": "Wilhelmshaven LNG Terminal 2 (FSRU Excelerate Excelsior)",
+      "facility_eic": "37W000000000111J",
+      "facility_type": "FSRU",
+      "country": "DE",
+      "company_name": "Deutsche Energy Terminal GmbH",
+      "company_eic": "21X000000001403J",
+      "url": "https://alsi.gie.eu/api?country=DE&company=21X000000001403J&facility=37W000000000111J"
+    }
+  ],
+  "brunsbuettel": [
+    {
+      "facility_name": "Brunsbuettel LNG Terminal 1 (FSRU Hoegh Gannet)",
+      "facility_eic": "37W000000000107A",
+      "facility_type": "FSRU",
+      "country": "DE",
+      "company_name": "Deutsche Energy Terminal GmbH",
+      "company_eic": "21X000000001403J",
+      "url": "https://alsi.gie.eu/api?country=DE&company=21X000000001403J&facility=37W000000000107A"
+    }
+  ],
+  "stade": [
+    {
+      "facility_name": "Stade LNG Terminal 1 (FSRU Energos Force)",
+      "facility_eic": "37W000000000110L",
+      "facility_type": "FSRU",
+      "country": "DE",
+      "company_name": "Deutsche Energy Terminal GmbH",
+      "company_eic": "21X000000001403J",
+      "url": "https://alsi.gie.eu/api?country=DE&company=21X000000001403J&facility=37W000000000110L"
+    }
+  ],
+  "mukran": [
+    {
+      "facility_name": "Mukran LNG Terminal (FSRU Neptune / FSRU Energos Power)",
+      "facility_eic": "37W000000000114D",
+      "facility_type": "FSRU",
+      "country": "DE",
+      "company_name": "Deutsche ReGas GmbH & Co. KGaA\t",
+      "company_eic": "37X000000000265F",
+      "url": "https://alsi.gie.eu/api?country=DE&company=37X000000000265F&facility=37W000000000114D"
+    }
+  ]
+}
