@@ -33,8 +33,9 @@ ENTSOG_COLS = [
 ]
 ALSI_COLS = [
     "snapshot_utc", "terminal", "gas_day", "facility_eic", "company_eic", "country",
-    "facility_name", "inventory_1e3m3", "send_out_gwh_d", "dtmi_1e3m3", "dtrs_gwh_d",
-    "status", "info",
+    "facility_name", "inventory_1e3m3", "inventory_gwh", "send_out_gwh_d",
+    "dtmi_1e3m3", "dtmi_gwh", "dtrs_gwh_d", "contracted_capacity",
+    "available_capacity", "status", "updated_at", "latitude", "longitude", "info",
 ]
 
 

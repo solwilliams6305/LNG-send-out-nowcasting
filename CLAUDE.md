@@ -22,10 +22,23 @@ system; keep the honest-caveats section of README.md intact.
   nominations for D published ~16:00 CET on D−1; ALSI publishes 19:30 CET
   + 23:00 CET catch-up. UK ENTSOG rows backfilled ~6 days late (zeros there
   can be genuine idling).
-- ALSI: `x-key` header; inventory in 10³ m³ LNG (volume), sendOut in GWh/d;
-  status E/C/N. EICs resolved at runtime (bootstrap script), never hardcoded.
-- Milford Haven: one ENTSOG point = two ALSI facilities (South Hook + Dragon).
-  Mukran: two TSO rows for one point — sum them.
+- ALSI (API manual V13): `x-key` header on data endpoints; the key must have
+  ALSI or all-platforms scope (AGSI-only keys get "Invalid or missing API key");
+  `/about?show=listing` is public. `inventory`/`dtmi` are dual-unit objects
+  {"lng": 10³ m³, "gwh": GWh} — GIE's own conversion, free GCV calibration.
+  Rows carry `updatedAt` and exact facility lat/lon. Status E/C/N. EICs
+  resolved at runtime (bootstrap script), never hardcoded. 15 live-resolvable
+  facilities across the 12 registered terminals.
+- Revision landscape (first snapshot, 2026-09-01): EU facilities confirm within
+  ~1 gas day — the E row exists intraday for the *running* day and updates
+  during it, so the E→C action is intraday (hence the 11:00 UTC cron run).
+  Post-C corrections still possible per GIE docs; snapshots catch both.
+- ALSI coverage gaps: UK LSOs (Grain, South Hook — both GB and GB* datasets)
+  are pure status-N since at least 2024; Dragon absent from ALSI entirely; Le
+  Havre stopped reporting 2026-01-21; Stade never commissioned. UK ground truth
+  → National Gas data portal (W2 priority); ENTSOG UK lags ~6 days.
+- Mukran: two ENTSOG TSO rows for one point — sum them.
+- His GIE key also unlocks AGSI (storage) — covariate for the W7 event study.
 
 ## Conventions
 

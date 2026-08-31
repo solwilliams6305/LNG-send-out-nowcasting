@@ -95,8 +95,9 @@ TERMINALS: tuple[Terminal, ...] = (
         approx_lon=0.713,
         notes=(
             "UK ENTSOG rows are backfilled with ~6-day lag (verified 2026-09-01); "
-            "near-real-time UK flows need National Gas's own data portal (TODO W3+). "
-            "Zero send-out for days at a time is genuine (summer idling)."
+            "ALSI's GB datasets are pure status-N since at least 2024 (UK LSOs no "
+            "longer provide data), so UK truth needs National Gas's portal (W2 "
+            "priority). Zero send-out for days at a time is genuine summer idling."
         ),
     ),
     Terminal(
@@ -109,8 +110,9 @@ TERMINALS: tuple[Terminal, ...] = (
         approx_lat=51.705,
         approx_lon=-5.105,
         notes=(
-            "One grid point covering TWO ALSI facilities — the mapping is 2 ALSI : 1 ENTSOG. "
-            "Same ~6-day UK reporting lag as Grain."
+            "One grid point nominally covering two ALSI facilities, but Dragon is "
+            "absent from ALSI entirely and South Hook is pure status-N since >= 2024 "
+            "— UK truth via National Gas portal; ENTSOG lags ~6 days."
         ),
     ),
     Terminal(
@@ -133,6 +135,7 @@ TERMINALS: tuple[Terminal, ...] = (
         alsi_name_patterns=("havre",),
         approx_lat=49.470,
         approx_lon=0.140,
+        notes="Reported to ALSI until 2026-01-21, status-N since (FSRU idle?); ENTSOG point still live.",
     ),
     Terminal(
         slug="wilhelmshaven",

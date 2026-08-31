@@ -1,13 +1,19 @@
 """Client for the GIE ALSI API (LNG inventory & send-out).
 
-Requires a free key from https://alsi.gie.eu/account, passed as the `x-key` header.
-Field semantics (GIE API manual v007):
-  gasDayStart  gas day the row reports on
-  inventory    LNG in tanks at end of gas day, in 10^3 m^3 LNG  (volume, not energy!)
-  sendOut      gas flow out of the facility during the gas day, GWh/d
-  dtmi         declared total max inventory, 10^3 m^3 LNG
-  dtrs         declared total reference send-out, GWh/d
-  status       E (estimated) / C (confirmed) / N (no data)
+Requires a free key from https://alsi.gie.eu/account, passed as the `x-key` header
+(the key must have ALSI or all-platforms scope — AGSI-only keys are rejected).
+The /about?show=listing endpoint is public. Field semantics (API manual V13,
+verified live 2026-09-01):
+  gasDayStart      gas day the row reports on
+  inventory        {"lng": 10^3 m^3, "gwh": GWh} — GIE's own volume->energy
+                   conversion, a free per-facility GCV calibration
+  sendOut          gas flow out of the facility during the gas day, GWh/d
+  dtmi             declared total max inventory, same dual-unit object
+  dtrs             declared total reference send-out, GWh/d
+  status           E (estimated) / C (confirmed) / N (no data); E rows appear
+                   intraday for the *running* gas day, before the 19:30 print
+  updatedAt        per-row last-modified timestamp (CET) — revision-study gold
+  latitude/longitude  exact facility coordinates (seed AIS berth polygons)
 
 Publication: 19:30 CET for the previous gas day, plus a second pass at 23:00 CET
 for late reporters. Operators may retroactively correct at any time — which is
@@ -126,21 +132,28 @@ def facility_history(
     return rows
 
 
-_NUMERIC = {"inventory", "sendOut", "dtmi", "dtrs"}
+def _num(v):
+    if v in (None, "", "-"):
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _volume_energy(v) -> tuple:
+    """API >= V13 sends {"lng": <10^3 m^3>, "gwh": <GWh>}; older payloads a bare
+    volume. Return (volume_1e3m3, gwh) with None for whatever is absent."""
+    if isinstance(v, dict):
+        return _num(v.get("lng")), _num(v.get("gwh"))
+    return _num(v), None
 
 
 def normalise(raw: dict, terminal: str, facility: dict) -> dict:
-    """One ALSI row -> flat snapshot record (numbers coerced, '-' -> None)."""
-
-    def num(field: str):
-        v = raw.get(field)
-        if v in (None, "", "-"):
-            return None
-        try:
-            return float(v)
-        except (TypeError, ValueError):
-            return None
-
+    """One ALSI facility row -> flat snapshot record."""
+    inv_vol, inv_gwh = _volume_energy(raw.get("inventory"))
+    dtmi_vol, dtmi_gwh = _volume_energy(raw.get("dtmi"))
+    info = raw.get("info")
     return {
         "terminal": terminal,
         "facility_eic": facility["facility_eic"],
@@ -148,12 +161,19 @@ def normalise(raw: dict, terminal: str, facility: dict) -> dict:
         "country": facility["country"],
         "facility_name": facility["facility_name"],
         "gas_day": raw.get("gasDayStart"),
-        "inventory_1e3m3": num("inventory"),
-        "send_out_gwh_d": num("sendOut"),
-        "dtmi_1e3m3": num("dtmi"),
-        "dtrs_gwh_d": num("dtrs"),
+        "inventory_1e3m3": inv_vol,
+        "inventory_gwh": inv_gwh,
+        "send_out_gwh_d": _num(raw.get("sendOut")),
+        "dtmi_1e3m3": dtmi_vol,
+        "dtmi_gwh": dtmi_gwh,
+        "dtrs_gwh_d": _num(raw.get("dtrs")),
+        "contracted_capacity": _num(raw.get("contractedCapacity")),
+        "available_capacity": _num(raw.get("availableCapacity")),
         "status": raw.get("status"),
-        "info": "|".join(raw.get("info") or []) if isinstance(raw.get("info"), list) else raw.get("info"),
+        "updated_at": raw.get("updatedAt"),
+        "latitude": _num(raw.get("latitude")),
+        "longitude": _num(raw.get("longitude")),
+        "info": "|".join(info) if isinstance(info, list) else info,
     }
 
 

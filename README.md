@@ -30,7 +30,20 @@ rather than point estimates — checked against later-published ground truth.
   idling, not missing data.
 - **ALSI inventory is a volume** (10³ m³ LNG), send-out an energy (GWh/d) — the
   volume→energy conversion (GCV × density, cargo-composition-dependent) is part
-  of the inference problem, not bookkeeping.
+  of the inference problem, not bookkeeping. Since API V13 each row also carries
+  GIE's own GWh conversion — a free per-facility GCV calibration to exploit.
+
+*2026-09-01 (evening, first ALSI snapshot)*:
+
+- **EU facilities confirm within ~1 gas day**, and the Estimated row exists
+  *intraday for the running gas day*, updating as the day progresses. The
+  revision study therefore reframes: the target is the intraday E-trajectory vs
+  the final Confirmed value (plus rarer post-C corrections), not a multi-day
+  E→C lag. Snapshot cadence raised to 3×/day accordingly.
+- **UK terminals do not report to ALSI at all** (pure status-N since ≥ 2024;
+  Dragon absent entirely) — the official 19:30 CET print simply has no UK leg
+  anymore. UK ground truth must come from National Gas's data portal; ENTSOG's
+  UK rows lag ~6 days. Le Havre stopped reporting 2026-01-21.
 
 ## Layout
 
