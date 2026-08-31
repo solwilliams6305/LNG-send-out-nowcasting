@@ -47,6 +47,7 @@ jobs:
       - name: Snapshot
         env:
           ALSI_KEY: ${{ secrets.ALSI_KEY }}
+          AISSTREAM_KEY: ${{ secrets.AISSTREAM_KEY }}
         run: python scripts/snapshot_daily.py
 
       - name: Commit snapshots

@@ -49,6 +49,16 @@ system; keep the honest-caveats section of README.md intact.
   milford_haven = south_hook + dragon. UK gas day 05:00 local = EU 06:00 CET
   at the same UTC instant year-round, so gas_day labels align with ENTSOG.
   Intraday TODO: /api/gas-system-status-data POST payload undiscovered.
+- AIS (lng_nowcast/ais.py): aisstream.io websocket, key AISSTREAM_KEY,
+  subscribe within 3 s, [lat, lon] corner order, max 3 connections. Two-tier
+  geometry: wide capture boxes (subscription) + tight berth boxes (at_berth
+  flag); Milford Haven has south_hook/dragon sub-boxes — ALL berth coords
+  PROVISIONAL until checked against observed tracks (scripts/ais_logger.py
+  prints berthed vessels; ALSI rows carry exact facility lat/lon for EU
+  refinement). Cargo inversion in physics.py: capacity-class primary,
+  draught-delta secondary (ballast compensation ~60% — draught understates
+  cargo). Offline test: scripts/selftest_ais.py. Snapshot runs listen ~480 s
+  when the key exists (--ais-window to change).
 - UK revision structure (quantified 2026-09-02, scripts/revision_report_uk.py):
   D+2 items republished ~30d later usually unchanged (median Δ=0); "M+15"
   items publish at ~M+1 and NEVER differ from final D+2 — drop them from

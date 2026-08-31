@@ -55,3 +55,93 @@ def inventory_to_gwh(inventory_1e3m3: float, energy_per_m3: Bounded = ENERGY_PER
     central = m3 * energy_per_m3.value / 1e3  # MWh -> GWh
     half = m3 * energy_per_m3.half_range / 1e3
     return central, half
+
+
+# ---------------------------------------------------------------------------
+# AIS cargo inversion (weeks 3-4)
+#
+# Two estimators for the energy delivered by a berth call, combined by the
+# filter as a jump-size prior:
+#
+#   1. Capacity-class (PRIMARY): AIS dimensions -> vessel class -> capacity,
+#      x fill x voyage boil-off x heel. Tighter than draught for the common
+#      full-discharge case.
+#   2. Draught-delta (SECONDARY): observed draught change x tonnes-per-cm.
+#      Physically subtle: ships take on ballast as cargo comes off (propeller
+#      immersion/stability), so the net draught change understates cargo mass:
+#          TPC * delta = cargo_out - ballast_in
+#      The ballast compensation ratio is large and uncertain (~0.5-0.7 of
+#      cargo mass), and AIS draught is hand-entered and often stale. Use it to
+#      detect PARTIAL discharges and as a sanity check, not as the primary.
+# ---------------------------------------------------------------------------
+
+# Seawater density and waterplane coefficient for TPC = Cw*L*B*rho/100 (t/cm).
+SEAWATER_DENSITY = Bounded(1.025, 1.020, 1.028, "t per m3")
+WATERPLANE_COEFF = Bounded(0.87, 0.82, 0.92, "dimensionless (LNG carriers)")
+
+# Fraction of cargo mass compensated by ballast intake during discharge.
+BALLAST_COMPENSATION = Bounded(0.60, 0.45, 0.75, "fraction of cargo mass")
+
+# Loaded fill fraction of nominal capacity (98% filling limit, minus vapour).
+LOADED_FILL = Bounded(0.975, 0.955, 0.985, "fraction of capacity")
+
+# (loa_min, loa_max, beam_min, beam_max, capacity m^3 central, half-range)
+# Standard LNG carrier classes; fallback scales by L*B against the 174k class.
+VESSEL_CLASSES = (
+    (330.0, 360.0, 52.0, 56.0, 265_000.0, 4_000.0),   # Q-Max
+    (305.0, 330.0, 48.0, 52.0, 213_000.0, 6_000.0),   # Q-Flex
+    (283.0, 305.0, 44.5, 48.0, 172_000.0, 10_000.0),  # modern standard 155-180k
+    (265.0, 283.0, 40.0, 44.5, 145_000.0, 9_000.0),   # older conventional 135-150k
+    (180.0, 265.0, 26.0, 40.0, 70_000.0, 35_000.0),   # midscale / med-max
+)
+
+
+def capacity_from_dimensions(loa: float, beam: float) -> Bounded | None:
+    """Nominal tank capacity (m^3) from AIS dimensions; None if not carrier-sized."""
+    if not loa or not beam or loa < 150:
+        return None
+    for lo, hi, blo, bhi, cap, half in VESSEL_CLASSES:
+        if lo <= loa < hi and blo <= beam < bhi:
+            return Bounded(cap, cap - half, cap + half, "m3")
+    ref_cap, ref_lb = 172_000.0, 295.0 * 46.0  # scale off the standard class
+    cap = ref_cap * (loa * beam) / ref_lb
+    return Bounded(cap, cap * 0.75, cap * 1.25, "m3")
+
+
+def full_discharge_energy(
+    capacity_m3: Bounded, voyage_days: float = 12.0
+) -> tuple[float, float]:
+    """(GWh central, GWh half-range) for a full discharge of a given vessel class."""
+    cargo_m3 = capacity_m3.value * LOADED_FILL.value * (1 - BOIL_OFF_PER_DAY.value * voyage_days)
+    delivered_m3 = cargo_m3 * (1 - HEEL_FRACTION.value)
+    central = delivered_m3 * ENERGY_PER_M3.value / 1e3  # MWh -> GWh
+    rel = (
+        (capacity_m3.half_range / capacity_m3.value) ** 2
+        + (LOADED_FILL.half_range / LOADED_FILL.value) ** 2
+        + (HEEL_FRACTION.half_range * 1.0) ** 2
+        + (ENERGY_PER_M3.half_range / ENERGY_PER_M3.value) ** 2
+        + (BOIL_OFF_PER_DAY.half_range * voyage_days) ** 2
+    ) ** 0.5
+    return central, central * rel
+
+
+def tonnes_per_cm(loa: float, beam: float) -> Bounded:
+    """TPC (t per cm immersion) from waterplane area."""
+    tpc = WATERPLANE_COEFF.value * loa * beam * SEAWATER_DENSITY.value / 100
+    rel = WATERPLANE_COEFF.half_range / WATERPLANE_COEFF.value
+    return Bounded(tpc, tpc * (1 - rel), tpc * (1 + rel), "t per cm")
+
+
+def draught_delta_to_energy(loa: float, beam: float, delta_m: float) -> tuple[float, float]:
+    """(GWh central, GWh half-range) implied by an observed draught DECREASE of
+    delta_m during a berth call, after undoing ballast compensation."""
+    tpc = tonnes_per_cm(loa, beam)
+    net_tonnes = tpc.value * delta_m * 100
+    cargo_tonnes = net_tonnes / (1 - BALLAST_COMPENSATION.value)
+    central = cargo_tonnes * GCV_MASS.value / 1e3  # MWh -> GWh
+    rel = (
+        (tpc.half_range / tpc.value) ** 2
+        + (BALLAST_COMPENSATION.half_range / (1 - BALLAST_COMPENSATION.value)) ** 2
+        + (GCV_MASS.half_range / GCV_MASS.value) ** 2
+    ) ** 0.5
+    return central, central * rel

@@ -79,6 +79,20 @@ all-versions pull — 17,628 published versions, 2024→today)*:
   day's D+1 also published 3 days late. This is why the filter carries
   heavy-tailed observation errors and three-way triangulation.
 
+*2026-09-02 (AIS layer design)*:
+
+- Berth calls last many hours and AIS draught persists after departure, so the
+  3×-daily snapshot cadence already supports daily arrival detection: each run
+  opens a bounded aisstream listening window (~8 min) and archives per-vessel
+  state + berth occupancy. A continuous local logger adds density when running.
+- Cargo size uses two estimators with propagated uncertainty: capacity-class
+  from AIS dimensions (primary — a standard 295×46 m carrier ⇒ 1096 ± 107 GWh
+  per full discharge) and draught-delta × TPC (secondary — 2.2 m ⇒
+  1012 ± 386 GWh). The draught channel is honestly ~3.6× wider because ships
+  ballast up as cargo comes off (compensation ~60% of cargo mass) and draught
+  is hand-entered. UK arrivals get free ground truth from National Gas inflow
+  data; EU arrivals from ALSI inventory jumps — the calibration anchors.
+
 ## Layout
 
 ```
@@ -156,7 +170,11 @@ near-independent measurements; calibration (do 90% intervals cover 90%?).
 - [x] W1: revision logger written; Actions workflow live in the cloud (3×/day)
 - [x] W1: ALSI key armed; first full snapshots committed
 - [x] W2: National Gas UK client (send-out ladder, stocks, flows, nominations)
-- [ ] W2: revision-process EDA as snapshots accumulate; UK all-versions pull
+- [x] W2: UK revision process quantified from the retroactive all-versions pull
+- [x] W3: AIS layer built (aisstream client, berth boxes, cargo inversion
+      physics, snapshot integration + continuous logger) — key pending
+- [ ] W2/W3: EU intraday E→C EDA as snapshots accumulate; verify berth boxes
+      against first observed traffic
 - [ ] W3–4: AIS layer (aisstream.io): berth polygons, draught deltas → arrivals
 - [ ] W5–6: state-space filter; intraday nowcast at the 19:30 CET horizon
 - [ ] W7–8: validation, calibration, TTF event study; write-up

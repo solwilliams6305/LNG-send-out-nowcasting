@@ -4,6 +4,7 @@
 
 # bulk local data (snapshots + reference ARE committed — they are the archive)
 data/raw/
+data/ais/
 
 # python
 __pycache__/

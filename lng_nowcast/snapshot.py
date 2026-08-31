@@ -23,7 +23,7 @@ import json
 
 import pandas as pd
 
-from . import alsi, config, entsog, nationalgas
+from . import alsi, ais, config, entsog, nationalgas
 from .terminals import TERMINALS, tier
 
 ENTSOG_COLS = [
@@ -40,6 +40,12 @@ ALSI_COLS = [
 NATIONALGAS_COLS = [
     "snapshot_utc", "terminal", "metric", "maturity", "pub_id", "gas_day",
     "value", "unit", "quality", "generated_at", "detail", "item_name",
+]
+AIS_COLS = [
+    "snapshot_utc", "mmsi", "name", "imo", "ship_type", "loa", "beam",
+    "draught_m", "lat", "lon", "sog", "nav_status", "terminal", "berth_sub",
+    "at_berth", "likely_lng_carrier", "destination", "n_pos",
+    "first_seen", "last_seen",
 ]
 
 
@@ -66,7 +72,7 @@ def load_alsi_registry() -> dict[str, list[dict]]:
     return json.loads(path.read_text())
 
 
-def run(window_days: int = 45, include_hourly: bool = True) -> dict:
+def run(window_days: int = 45, include_hourly: bool = True, ais_window_s: float = 480) -> dict:
     """One snapshot run. Returns a manifest dict (also appended to manifest.csv)."""
     config.ensure_dirs()
     now = dt.datetime.now(dt.timezone.utc)
@@ -76,8 +82,9 @@ def run(window_days: int = 45, include_hourly: bool = True) -> dict:
     start = today - dt.timedelta(days=window_days)
 
     manifest = {"snapshot_utc": snap, "entsog_rows": 0, "entsog_hourly_rows": 0,
-                "alsi_rows": 0, "nationalgas_rows": 0,
-                "alsi_key_present": bool(config.ALSI_KEY), "errors": ""}
+                "alsi_rows": 0, "nationalgas_rows": 0, "ais_rows": 0,
+                "alsi_key_present": bool(config.ALSI_KEY),
+                "ais_key_present": bool(config.AISSTREAM_KEY), "errors": ""}
     errors: list[str] = []
 
     # --- ENTSOG daily: Physical Flow + Nomination for every registered point ---
@@ -135,6 +142,20 @@ def run(window_days: int = 45, include_hourly: bool = True) -> dict:
         manifest["nationalgas_rows"] = _write(grows, NATIONALGAS_COLS, d / f"{stamp}.csv")
     except Exception as e:
         errors.append(f"nationalgas: {e}")
+
+    # --- AIS: bounded listening window -> berth occupancy + static state ---
+    if not config.AISSTREAM_KEY:
+        print("AIS: skipped (no AISSTREAM_KEY set — register free at https://aisstream.io)")
+    elif ais_window_s <= 0:
+        pass
+    else:
+        try:
+            arows = ais.snapshot_rows(duration_s=ais_window_s)
+            d = config.SNAPSHOT_DIR / "ais"
+            d.mkdir(exist_ok=True)
+            manifest["ais_rows"] = _write(arows, AIS_COLS, d / f"{stamp}.csv")
+        except Exception as e:
+            errors.append(f"ais: {e}")
 
     manifest["errors"] = "; ".join(errors)
     mpath = config.SNAPSHOT_DIR / "manifest.csv"
