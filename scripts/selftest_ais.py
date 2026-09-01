@@ -28,8 +28,10 @@ def main() -> int:
     assert ais.locate(48.0, 2.0) == (None, None, False)  # Paris is not a berth
     assert ais.locate(36.0, -5.5) == ("transit_gibraltar", None, False)
     assert ais.locate(51.0, 1.5) == ("transit_dover", None, False)
+    assert ais.locate(29.72, -93.87) == ("depart_sabine_pass", None, False)
+    assert ais.locate(70.69, 23.60) == ("depart_hammerfest", None, False)
     assert len(ais.subscription("k")["BoundingBoxes"]) == (
-        len(ais.CAPTURE_BOXES) + len(ais.TRANSIT_BOXES))
+        len(ais.CAPTURE_BOXES) + len(ais.TRANSIT_BOXES) + len(ais.DEPARTURE_BOXES))
 
     # --- normalization + state accumulation -> berthed carrier row ---
     static = {

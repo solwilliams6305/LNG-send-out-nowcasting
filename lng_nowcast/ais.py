@@ -78,6 +78,21 @@ TRANSIT_BOXES: tuple[BerthBox, ...] = (
     BerthBox("finisterre", "", 42.70, 43.30, -9.70, -9.05),
 )
 
+# Export-departure boxes: Atlantic-basin loading terminals, all coastal and
+# hence terrestrially visible. A laden departure here is a cargo landing
+# somewhere in the basin ~10-14 days later — the longest-horizon free signal
+# in the pipeline (destination unknown at departure; the chokepoints resolve
+# it later). Satellite AIS (the mid-ocean picture) is the commercial moat and
+# deliberately out of scope.
+DEPARTURE_BOXES: tuple[BerthBox, ...] = (
+    BerthBox("sabine_pass", "", 29.55, 29.90, -94.05, -93.65),
+    BerthBox("corpus_christi", "", 27.75, 28.05, -97.45, -97.05),
+    BerthBox("freeport_tx", "", 28.80, 29.05, -95.45, -95.15),
+    BerthBox("calcasieu", "", 29.70, 30.10, -93.45, -93.20),
+    BerthBox("cove_point", "", 38.28, 38.52, -76.52, -76.28),
+    BerthBox("hammerfest", "", 70.58, 70.80, 23.35, 23.90),
+)
+
 # Tight berth boxes (~±1.1 km) around the ALSI-published jetty coordinates.
 # Milford Haven splits into its two jetties: south_hook uses the ALSI position;
 # dragon stays PROVISIONAL (no ALSI entry) until a carrier is observed there.
@@ -99,7 +114,7 @@ def subscription(api_key: str) -> dict:
         "APIKey": api_key,
         "BoundingBoxes": [
             [[b.lat_min, b.lon_min], [b.lat_max, b.lon_max]]
-            for b in CAPTURE_BOXES + TRANSIT_BOXES
+            for b in CAPTURE_BOXES + TRANSIT_BOXES + DEPARTURE_BOXES
         ],
         "FilterMessageTypes": ["PositionReport", "ShipStaticData"],
     }
@@ -169,6 +184,9 @@ def locate(lat: float | None, lon: float | None) -> tuple[str | None, str | None
         transit = next((b.terminal for b in TRANSIT_BOXES if b.contains(lat, lon)), None)
         if transit:
             return f"transit_{transit}", None, False
+        depart = next((b.terminal for b in DEPARTURE_BOXES if b.contains(lat, lon)), None)
+        if depart:
+            return f"depart_{depart}", None, False
     return capture, None, False
 
 
@@ -311,5 +329,6 @@ def snapshot_rows(duration_s: float = 480) -> list[dict]:
     return [
         r for r in rows
         if r["terminal"] is not None
-        and (not str(r["terminal"]).startswith("transit_") or r["likely_lng_carrier"])
+        and (not str(r["terminal"]).startswith(("transit_", "depart_"))
+             or r["likely_lng_carrier"])
     ]

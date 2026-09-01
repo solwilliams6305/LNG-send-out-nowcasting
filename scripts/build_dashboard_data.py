@@ -59,7 +59,7 @@ def latest_ais():
         return [], {}
     latest = pd.read_csv(files[-1])
     keep = latest[(latest.at_berth == True) | (latest.likely_lng_carrier == True)
-                  | latest.terminal.astype(str).str.startswith("transit_")]
+                  | latest.terminal.astype(str).str.startswith(("transit_", "depart_"))]
     vessels = []
     for r in keep.itertuples():
         vessels.append({
@@ -78,9 +78,10 @@ def latest_ais():
     tally: dict = {}
     for f in files[-21:]:
         d = pd.read_csv(f)
-        tr = d[d.terminal.astype(str).str.startswith("transit_") & (d.likely_lng_carrier == True)]
+        tr = d[d.terminal.astype(str).str.startswith(("transit_", "depart_"))
+               & (d.likely_lng_carrier == True)]
         for r in tr.itertuples():
-            key = str(r.terminal).replace("transit_", "")
+            key = str(r.terminal).replace("transit_", "").replace("depart_", "↑ ")
             tally.setdefault(key, set()).add(int(r.mmsi))
     transits = {k: len(v) for k, v in tally.items()}
     return vessels, transits
