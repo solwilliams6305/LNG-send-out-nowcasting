@@ -227,6 +227,21 @@ for the price event study.
   across all terminals and horizons — distribution-free guarantees on top of
   the model's interpretable bands, reported side by side.
 
+*2026-09-01 (price layer + first-pass event study)*:
+
+- Free daily price series secured at zero cost: **UK SAP** (PUBOB603 — the
+  on-the-day commodity price, via the same National Gas API as everything
+  else) and **TTF front-month** (Yahoo `TTF=F`; kept in gitignored raw data,
+  personal-research use). JKM has no free daily source — stated honestly.
+- First-pass event study, 564 trading days: **a null with content**. A
+  one-sigma (~109 GWh) NW send-out surprise moves front-month TTF ≤ 0.16%
+  same-day, |t| < 1 throughout — signs directionally right (supply shock ⇒
+  higher price), magnitudes noise-level against 3–5% daily volatility.
+  Typical daily send-out news (~1–3% of NW demand) is not a front-month
+  mover; the refined study should target prompt prices, tail/outage events,
+  and conditional samples (cold, tight storage). Consistent with the
+  damped-arbitrage literature.
+
 ## Model (target state)
 
 Per terminal, a slow–fast state-space model on gas-day resolution:
