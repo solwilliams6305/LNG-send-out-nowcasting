@@ -26,7 +26,10 @@ def main() -> int:
     term, sub, in_berth = ais.locate(51.70, -5.03)  # mid-waterway: capture only
     assert term == "milford_haven" and not in_berth, ais.locate(51.70, -5.03)
     assert ais.locate(48.0, 2.0) == (None, None, False)  # Paris is not a berth
-    assert len(ais.subscription("k")["BoundingBoxes"]) == len(ais.CAPTURE_BOXES)
+    assert ais.locate(36.0, -5.5) == ("transit_gibraltar", None, False)
+    assert ais.locate(51.0, 1.5) == ("transit_dover", None, False)
+    assert len(ais.subscription("k")["BoundingBoxes"]) == (
+        len(ais.CAPTURE_BOXES) + len(ais.TRANSIT_BOXES))
 
     # --- normalization + state accumulation -> berthed carrier row ---
     static = {

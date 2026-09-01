@@ -255,6 +255,29 @@ for the price event study.
   against known daily magnitudes; berth/anchorage watch running (LNGSHIPS
   EMPRESS still holding "FOR ORDER" off Grain).
 
+*2026-09-01 (night: the days-of-cover stress index — first horse race)*:
+
+- New forward product: **days-of-cover** = total NW LNG tank energy ÷ 7-day
+  send-out (currently 10.4 days vs a 9.9 median — with EU storage at 65.1%
+  vs ~90% at this date in 2024/25, the study is running during a live stress
+  build-up). Inputs added: AGSI EU storage (the incumbent indicator, 973 d)
+  and NTS linepack actuals (`scripts/backfill_stress.py`).
+- First in-sample horse race (`scripts/stress_study.py`), predicting rare
+  events (q97.5 daily jumps within 7/14 days): for **TTF spikes, storage-%
+  alone scores AUC 0.77–0.80; adding cover lifts it to 0.85**; for UK SAP
+  spikes, 0.62 → 0.73. Promising — and NOT yet a claim: thresholds are
+  in-sample, windows overlap (eff. N ≈ N/k), only two winters, and two
+  components show seasonal-confounding signatures (trailing arrivals
+  "predicting" spikes; linepack lows anti-correlated with cover). Required
+  before any claim: seasonal controls, walk-forward fitting, a third winter.
+- **Chokepoint transit layer armed** (`ais.py`): Gibraltar, Dover, Ushant,
+  Port Said, Finisterre boxes now in the AIS subscription, keeping
+  likely-carrier sightings only (Dover would otherwise drown the archive in
+  ferries). Verified live (8 vessels each at Dover/Gibraltar in 90 s). This
+  is the ship layer of the cover index: laden transits → forward arrival
+  pipeline. No free historical AIS exists, so this archive — like the
+  revision archive — only accumulates; day one is today.
+
 *2026-09-01 (evening: kernel answered, hazards fitted, PGAS stress-tested)*:
 
 - **The intraday deviation process is nearly maximally persistent**: fitting

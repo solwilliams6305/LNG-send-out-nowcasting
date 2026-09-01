@@ -66,6 +66,18 @@ CAPTURE_BOXES: tuple[BerthBox, ...] = tuple(
     _box(t.slug, "", t.approx_lat, t.approx_lon, 0.05, 0.08) for t in TERMINALS
 )
 
+# Chokepoint transit boxes: coastal passages every Europe-bound carrier must
+# cross within terrestrial AIS coverage. Laden transits (draught + class) feed
+# the forward supply pipeline — the days-of-cover index's ship layer. This
+# archive cannot be backfilled (no free historical AIS): it only accumulates.
+TRANSIT_BOXES: tuple[BerthBox, ...] = (
+    BerthBox("gibraltar", "", 35.85, 36.15, -5.85, -5.25),
+    BerthBox("dover", "", 50.85, 51.25, 1.20, 1.95),
+    BerthBox("ushant", "", 48.35, 48.85, -5.90, -4.95),
+    BerthBox("port_said", "", 31.20, 31.60, 32.15, 32.60),
+    BerthBox("finisterre", "", 42.70, 43.30, -9.70, -9.05),
+)
+
 # Tight berth boxes (~±1.1 km) around the ALSI-published jetty coordinates.
 # Milford Haven splits into its two jetties: south_hook uses the ALSI position;
 # dragon stays PROVISIONAL (no ALSI entry) until a carrier is observed there.
@@ -86,7 +98,8 @@ def subscription(api_key: str) -> dict:
     return {
         "APIKey": api_key,
         "BoundingBoxes": [
-            [[b.lat_min, b.lon_min], [b.lat_max, b.lon_max]] for b in CAPTURE_BOXES
+            [[b.lat_min, b.lon_min], [b.lat_max, b.lon_max]]
+            for b in CAPTURE_BOXES + TRANSIT_BOXES
         ],
         "FilterMessageTypes": ["PositionReport", "ShipStaticData"],
     }
@@ -152,6 +165,10 @@ def locate(lat: float | None, lon: float | None) -> tuple[str | None, str | None
     berth = next((b for b in BERTH_BOXES if b.contains(lat, lon)), None)
     if berth:
         return capture or berth.terminal, berth.sub or berth.terminal, True
+    if capture is None:
+        transit = next((b.terminal for b in TRANSIT_BOXES if b.contains(lat, lon)), None)
+        if transit:
+            return f"transit_{transit}", None, False
     return capture, None, False
 
 
@@ -288,6 +305,11 @@ def snapshot_rows(duration_s: float = 480) -> list[dict]:
     snap = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
     vessels = listen(duration_s)
     rows = [v.row(snap) for v in vessels.values()]
-    # Keep everything seen in a capture box; tiny craft are filtered at analysis
-    # time, but berthed-or-carrier rows are the signal.
-    return [r for r in rows if r["terminal"] is not None]
+    # Terminal capture boxes keep everything (analysis filters later); the
+    # busy chokepoints (Dover!) keep only likely carriers, or the archive
+    # would drown in ferries.
+    return [
+        r for r in rows
+        if r["terminal"] is not None
+        and (not str(r["terminal"]).startswith("transit_") or r["likely_lng_carrier"])
+    ]

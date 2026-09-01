@@ -69,6 +69,32 @@ def _get(params: dict | None = None, path: str = "") -> dict | list:
     raise RuntimeError("unreachable")
 
 
+def agsi_history(start: dt.date, end: dt.date, zone: str = "eu",
+                 size: int = 300) -> list[dict]:
+    """Daily AGSI storage rows (same key, sister platform). zone='eu' for the
+    EU aggregate via type=eu, else a country code via country=XX. Fields:
+    gasInStorage (TWh), full (%), injection/withdrawal (GWh/d), status."""
+    rows: list[dict] = []
+    page = 1
+    params_base = {"type": "eu"} if zone == "eu" else {"country": zone}
+    headers = {"x-key": config.ALSI_KEY, "User-Agent": config.USER_AGENT}
+    while True:
+        r = requests.get(
+            "https://agsi.gie.eu/api",
+            params={**params_base, "from": start.isoformat(), "to": end.isoformat(),
+                    "size": size, "page": page},
+            headers=headers, timeout=config.HTTP_TIMEOUT,
+        )
+        r.raise_for_status()
+        payload = r.json()
+        rows.extend(payload.get("data", []))
+        if page >= int(payload.get("last_page") or 1):
+            break
+        page += 1
+        time.sleep(0.2)
+    return rows
+
+
 def listing() -> list:
     """Company/facility tree with EIC codes: /api/about?show=listing."""
     payload = _get({"show": "listing"}, path="/about")
