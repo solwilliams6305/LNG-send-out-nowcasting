@@ -168,7 +168,8 @@ def _nb_loglik(spells: list[int], mean: float, var: float) -> float:
     return float(ll)
 
 
-def gibbs_theta(traj: dict, y: np.ndarray, th: Theta, rng) -> Theta:
+def gibbs_theta(traj: dict, y: np.ndarray, th: Theta, rng,
+                prior: Theta | None = None) -> Theta:
     r, z, e = traj["r"], traj["z"], traj["e"]
     stay = (r == ACTIVE) & ~e
     stay[0] = False
@@ -194,20 +195,40 @@ def gibbs_theta(traj: dict, y: np.ndarray, th: Theta, rng) -> Theta:
     else:
         mu_r, sig_r = th.mu_r, th.sig_r
 
+    # Component-label identification: "broad" must stay the minority regime.
+    # Long histories otherwise drift the labels (observed: grain p_b -> 0.60).
+    if p_b > 0.5:
+        sig_t, sig_b, p_b = sig_b, sig_t, 1 - p_b
+        if sig_b < 2 * sig_t:
+            sig_b = 2 * sig_t
+
     sp = _spells(r)
     new = Theta(th.idle_mean, th.idle_var, th.active_mean, th.active_var,
                 sig_t, sig_b, p_b, mu_r, max(sig_r, 20.0))
-    # RW-MH on sojourn moments per regime
+    # RW-MH on sojourn moments per regime, with log-normal priors centred on
+    # the moment fits: weakly-identified blocks (a terminal that never idles
+    # has zero completed spells) stay tethered instead of random-walking —
+    # the full-history stability run diverged exactly there without these.
     for reg, mkey, vkey in ((IDLE, "idle_mean", "idle_var"),
                             (ACTIVE, "active_mean", "active_var")):
+        pm = np.log(max(getattr(prior, mkey) - 1, 1e-3)) if prior else None
+        pv = np.log(max(getattr(prior, vkey), 1e-3)) if prior else None
+
+        def logpost(mean, var):
+            lp = _nb_loglik(sp[reg], mean, var)
+            if prior is not None:
+                lp += -0.5 * ((np.log(max(mean - 1, 1e-3)) - pm) / 1.0) ** 2
+                lp += -0.5 * ((np.log(max(var, 1e-3)) - pv) / 1.5) ** 2
+            return lp
+
         mean0, var0 = getattr(new, mkey), getattr(new, vkey)
-        cur_ll = _nb_loglik(sp[reg], mean0, var0)
+        cur = logpost(mean0, var0)
         for _ in range(5):
             mp = float(np.exp(np.log(mean0 - 1 + 1e-3) + rng.normal(0, 0.15)) + 1)
             vp = float(np.exp(np.log(var0) + rng.normal(0, 0.25)))
-            prop_ll = _nb_loglik(sp[reg], mp, vp)
-            if np.log(rng.random()) < prop_ll - cur_ll:
-                mean0, var0, cur_ll = mp, vp, prop_ll
+            prop = logpost(mp, vp)
+            if np.log(rng.random()) < prop - cur:
+                mean0, var0, cur = mp, vp, prop
         setattr(new, mkey, mean0)
         setattr(new, vkey, var0)
     return new
@@ -221,6 +242,6 @@ def run_pgas(y: np.ndarray, th0: Theta, sweeps: int = 300, n_part: int = 60,
     chain = []
     for _ in range(sweeps):
         traj = csmc_as(y, th, ref=traj, n_part=n_part, rng=rng)
-        th = gibbs_theta(traj, y, th, rng)
+        th = gibbs_theta(traj, y, th, rng, prior=th0)
         chain.append(th)
     return chain
