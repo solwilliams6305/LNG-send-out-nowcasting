@@ -195,6 +195,8 @@ class VesselState:
         likely_lng = bool(
             self.loa and self.loa >= MIN_CARRIER_LOA
             and (self.ship_type in TANKER_TYPES or self.ship_type in (None, 0))
+            # LNG carriers draw <= ~12.5 m; deeper = crude/products tanker.
+            and (self.draught_m is None or self.draught_m <= 12.8)
         )
         return {
             "snapshot_utc": snapshot_utc,
