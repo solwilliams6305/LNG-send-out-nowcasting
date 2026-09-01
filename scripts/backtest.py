@@ -32,7 +32,7 @@ import pandas as pd
 
 from lng_nowcast import config
 
-DEV_START, DEV_END = "2024-06-01", "2025-12-31"
+DEV_START, DEV_END = "2018-01-01", "2025-12-31"  # 2026 stays the frozen holdout
 COST_BPS = 5.0
 ZWIN, ZMIN = 120, 60
 
@@ -69,10 +69,27 @@ def build() -> pd.DataFrame:
     keep = (bmax - dates).dt.days > 4
     ret = ret[keep.values]
 
-    spec = importlib.util.spec_from_file_location("ss", ROOT / "scripts" / "stress_study.py")
-    ss = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(ss)
-    panel = ss.build_panel()
+    # Full-history panel, ALSI-internal for consistency: the same source
+    # provides tanks and send-out back to the 2010s, whereas ENTSOG LNG-point
+    # history only begins ~2021 — mixing them would create a composition
+    # break. EU core four; UK excluded from cover (NG stocks start 2024).
+    al = pd.read_csv(config.RAW_DIR / "alsi_daily.csv")
+    al = al[al.status.isin(["E", "C"])
+            & al.terminal.isin(["gate", "eems", "zeebrugge", "dunkerque"])].copy()
+    for c in ("inventory_gwh", "send_out_gwh_d"):
+        al[c] = pd.to_numeric(al[c], errors="coerce")
+    g = al.groupby("gas_day").agg(tank=("inventory_gwh", "sum"),
+                                  burn=("send_out_gwh_d", "sum"),
+                                  n_fac=("send_out_gwh_d", "size"))
+    g = g[g.n_fac >= 2]  # require at least two reporting facilities
+    burn7 = g.burn.rolling(7, min_periods=4).mean()
+    panel = pd.DataFrame({
+        "cover": g.tank / burn7.clip(lower=50),
+        "arr": (g.tank.diff() + g.burn).clip(lower=0),
+    })
+    si = pd.read_csv(config.RAW_DIR / "stress_inputs.csv")
+    si["value"] = pd.to_numeric(si.value, errors="coerce")
+    panel["storage"] = si[si.series == "agsi_eu_full_pct"].set_index("date").value
 
     ev = pd.read_csv(config.RAW_DIR / "nowcast_eval.csv")
     eu = ev[ev.terminal.isin(["gate", "eems", "zeebrugge"])]
