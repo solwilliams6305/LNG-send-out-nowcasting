@@ -54,16 +54,17 @@ def _event(terminal: str, cluster: list, source: str) -> dict:
     }
 
 
-def uk_arrivals() -> pd.DataFrame:
+def uk_daily_inflow() -> pd.DataFrame:
+    """(terminal, gas_day, arrival_gwh) from National Gas storage inflows."""
     ng = pd.read_csv(config.RAW_DIR / "nationalgas_daily.csv")
     inflow = ng[ng.metric == "inflow"].copy()
     inflow["arrival_gwh"] = pd.to_numeric(inflow["value"], errors="coerce") / 1e6
-    daily = inflow.groupby(["terminal", "gas_day"], as_index=False)["arrival_gwh"].sum()
-    receiving = daily[daily.arrival_gwh >= DAY_THRESHOLD_GWH]
-    return pd.DataFrame(_cluster(receiving, "ng_inflow"))
+    return inflow.groupby(["terminal", "gas_day"], as_index=False)["arrival_gwh"].sum()
 
 
-def eu_implied_arrivals() -> pd.DataFrame:
+def eu_daily_panel() -> pd.DataFrame:
+    """Per (terminal, gas_day): ALSI inventory (GWh), send-out, and implied
+    arrival A_t = dI_t + S_t (NaN across data gaps)."""
     al = pd.read_csv(config.RAW_DIR / "alsi_daily.csv")
     al = al[al.status.isin(["E", "C"])].copy()
     for c in ("inventory_gwh", "inventory_1e3m3", "send_out_gwh_d"):
@@ -81,8 +82,19 @@ def eu_implied_arrivals() -> pd.DataFrame:
     daily["gap_days"] = (
         pd.to_datetime(daily.gas_day).groupby(daily.terminal).diff().dt.days
     )
-    daily = daily[daily.gap_days == 1]  # a data gap invalidates the delta
+    daily.loc[daily.gap_days != 1, "d_inv"] = float("nan")
     daily["arrival_gwh"] = daily.d_inv + daily.send_out
+    return daily
+
+
+def uk_arrivals() -> pd.DataFrame:
+    daily = uk_daily_inflow()
+    receiving = daily[daily.arrival_gwh >= DAY_THRESHOLD_GWH]
+    return pd.DataFrame(_cluster(receiving, "ng_inflow"))
+
+
+def eu_implied_arrivals() -> pd.DataFrame:
+    daily = eu_daily_panel().dropna(subset=["arrival_gwh"])
     receiving = daily[daily.arrival_gwh >= DAY_THRESHOLD_GWH]
     return pd.DataFrame(_cluster(receiving, "alsi_implied"))
 

@@ -69,6 +69,20 @@ system; keep the honest-caveats section of README.md intact.
   commercial finalized 0). Stocks occasionally corrected next day (up to
   340 GWh). Publication lags have tails (that D+1 came 3 days late).
 
+- ENTSOG data traps (found 2026-09-01): dunkerque hourly rows are ALL-NaN
+  (NaTran publishes empty values — use min_count so NaN never reads as 0);
+  Nomination queries hang randomly with zero bytes forever (client retries
+  timeouts once then skips; re-run passes fill gaps, merge is idempotent);
+  hourly gas-day labeling needs the −6h shift (post-midnight hours belong to
+  the previous gas day); LNG-point nominations are empirically worse than
+  persistence as forecasts (~70% archived post-renomination) — the filter's
+  φ-fit rejects them, don't hand-force them in.
+- Filter (lng_nowcast/nowcast.py + scripts/run_nowcast.py): reference
+  implementation, Solomon owns the maths (see module ownership note).
+  Evaluation headline: intraday horizons 3–7× better than persistence with
+  calibrated 90% bands; H0 ties persistence (correct). Open: Zeebrugge
+  non-Gaussian profile, cov50 too wide, day-ahead drivers.
+
 ## Conventions
 
 - Snapshots are append-only timestamped CSVs under data/snapshots/ (committed);

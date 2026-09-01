@@ -185,6 +185,31 @@ for the price event study.
 .venv/bin/python scripts/eda_overview.py                         # chart
 ```
 
+*2026-09-01 (reference filter — first full walk-forward evaluation,
+2024-06 → 2026-08, six terminals, 9,846 nowcasts)*:
+
+- **Intraday nowcasts beat every daily baseline by 3–7×**: at the evening
+  horizon (gas-hour 11, hours before ALSI's 19:30 print) Gate's MAE is
+  6.2 GWh vs 20.6 for persistence (90% bands cover 0.97), Eems 2.9 vs 15.1
+  (0.99). At the day-ahead horizon the filter ties persistence everywhere —
+  the correct result, because…
+- **ENTSOG LNG-point nominations are empirically useless as forecasts**
+  (MAE 36–225 GWh, *worse* than persistence; ~70% of archived values are
+  post-renomination). The model fits φ from data and rejects them. Genuine
+  day-ahead skill must come from AIS arrivals, spreads, and weather.
+- **Zeebrugge is the honest hard case**: transshipment traffic makes its
+  intraday profile volatile and non-Gaussian; point MAE improves 47→28 GWh
+  but 90% coverage reaches only 0.83. Open modelling item.
+- Modelling lessons encoded: send-out needs a regime-switching proposal
+  (tight AR core + occasional re-levelling) or the filter lags big moves for
+  days; idle is a sticky discrete state and the posterior *median* is the
+  right point estimate at the zero atom; observation noise for the intraday
+  channel must be *measured* per terminal (profile error), not assumed.
+- Data traps found: dunkerque's ENTSOG hourly rows exist but are **all-NaN**
+  (a naive sum reads "zero flow" and poisons the nowcast); ENTSOG hangs some
+  Nomination queries indefinitely with zero bytes (client now times out
+  fast, retries once, and skips).
+
 ## Model (target state)
 
 Per terminal, a slow–fast state-space model on gas-day resolution:
@@ -213,8 +238,11 @@ near-independent measurements; calibration (do 90% intervals cover 90%?).
       physics, snapshot integration + continuous logger) — key pending
 - [x] W3/W5 prep: ALSI historical backfill; 1,446-event arrivals dataset with
       jump sizes calibrated against vessel-class physics
-- [ ] W5–6: the state-space filter (jump-diffusion inventory/send-out model,
-      heavy-tailed observation errors, E/C-status-dependent noise)
+- [x] W5–6: reference particle filter + walk-forward evaluation harness
+      (lng_nowcast/nowcast.py, scripts/run_nowcast.py) — model choices now
+      to be owned, reworked and extended by me (see ownership note in the
+      module); open items: Zeebrugge profile risk, cov50 width, day-ahead
+      drivers (AIS/spreads/weather), E/C-status-dependent noise
 - [ ] W2/W3 (data-gated): EU intraday E→C EDA as snapshots accumulate; AIS
       berth-event reconstruction + berth-box verification from observed tracks
 - [ ] W3–4: AIS layer (aisstream.io): berth polygons, draught deltas → arrivals

@@ -28,7 +28,10 @@ ENTSOE_TOKEN = os.environ.get("ENTSOE_TOKEN", "").strip()
 
 # Identify ourselves politely to the public APIs.
 USER_AGENT = "lng-nowcast/0.1 (student research; github repo forthcoming)"
-HTTP_TIMEOUT = 90  # seconds
+# These APIs normally answer in < 5 s; ENTSOG occasionally *hangs* certain
+# (point, indicator) queries with zero bytes forever, so the timeout is kept
+# tight and timeouts are retried at most once (see entsog._get).
+HTTP_TIMEOUT = 45  # seconds
 RETRIES = 4
 RETRY_BACKOFF = 3.0  # seconds, doubled per attempt
 

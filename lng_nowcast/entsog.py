@@ -59,7 +59,14 @@ def _get(path: str, params: dict) -> dict:
                 delay *= 2
                 continue
             r.raise_for_status()
-        except (requests.ConnectionError, requests.Timeout):
+        except requests.Timeout:
+            # A timed-out ENTSOG query is usually a server-side hang that never
+            # recovers (verified live: some nomination windows stall with zero
+            # bytes indefinitely) — one retry, then let the caller skip the point.
+            if attempt >= 1:
+                raise
+            time.sleep(delay)
+        except requests.ConnectionError:
             if attempt == config.RETRIES - 1:
                 raise
             time.sleep(delay)
