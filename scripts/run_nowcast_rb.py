@@ -53,7 +53,8 @@ def run_terminal_rb(name: str, p: pd.DataFrame, horizons: list[str],
         if "H2" in horizons:
             views["H2"] = pf.posterior_s({"cum_h": (11, r.cum11, rels[11] if rels else None)})
         pf.commit({"s_obs": (r.s_truth, model.rel_flow, model.flow_floor),
-                   "i_obs": r.inv_gwh if "inv_gwh" in r else None})
+                   "i_obs": r.inv_gwh if "inv_gwh" in r else None},
+                  arrival_obs=r.arrival_gwh if "arrival_gwh" in r else None)
         if k >= rn.WARMUP_DAYS and day >= rn.EVAL_START:
             for h, ps in views.items():
                 rows.append({"terminal": name, "gas_day": day, "horizon": h,

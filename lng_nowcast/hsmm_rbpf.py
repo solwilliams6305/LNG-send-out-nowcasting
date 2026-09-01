@@ -94,10 +94,14 @@ class HsmmModel:
     sigma_i: float = 8.0
     i_max: float = 4000.0
     s_max: float = 800.0
-    # arrivals
+    # arrivals: renewal process with an age-dependent hazard. The empirical
+    # hazard is exactly zero at 1-day gaps at every terminal (berth
+    # turnaround) and rises with age at scheduled terminals — a constant
+    # Bernoulli rate is the memoryless special case this replaces.
     lam_arrival: float = 0.25
     jump_mean: float = 1050.0
     jump_sd: float = 300.0
+    arr_haz: np.ndarray | None = None  # hazard by days-since-last-arrival
     # observation noise (identified from the cross-source studies; fixed)
     rel_flow: float = 0.004
     flow_floor: float = 1.0
@@ -171,6 +175,13 @@ class HsmmModel:
                 m.lam_arrival = float(days.mean())
                 m.jump_mean = float(arr[days].mean())
                 m.jump_sd = float(max(arr[days].std(), 100.0))
+                # inter-arrival gaps -> NB renewal hazard (refractory at age 1)
+                idx = np.flatnonzero(days)
+                gaps = np.diff(idx)
+                gaps = gaps[gaps > 0]
+                if len(gaps) >= 10:
+                    m.arr_haz = _negbin_hazard_impl(float(gaps.mean()),
+                                                    float(max(gaps.var(), 1.0)))
         for k, v in overrides.items():
             setattr(m, k, v)
         m.__post_init__()
@@ -195,6 +206,9 @@ class RbParticleFilter:
         self.PSS = np.full(n, (model.sigma_tight * 2.0) ** 2 if active0 else 0.0)
         self.PIS = np.zeros(n)
         self.w = np.full(n, 1.0 / n)
+        # days since last observed cargo arrival — observable with one-day lag
+        # (arrivals appear in the next day's publications), so a scalar.
+        self.arr_age = 5
 
     # ------------------------------------------------------------ propagate
     def propagate(self) -> None:
@@ -207,8 +221,13 @@ class RbParticleFilter:
         new_r = np.where(switch, 1 - self.r, self.r)
         self.a = np.where(switch, 1, self.a + 1)
 
-        # arrival input, sampled per particle
-        jump = rng.random(n) < m.lam_arrival
+        # arrival input, sampled per particle from the renewal hazard at the
+        # current (observed, lagged) arrival age
+        if m.arr_haz is not None:
+            lam_a = float(m.arr_haz[min(self.arr_age - 1, MAX_AGE - 1)])
+        else:
+            lam_a = m.lam_arrival
+        jump = rng.random(n) < lam_a
         A = np.where(jump, np.maximum(rng.normal(m.jump_mean, m.jump_sd, n), 0.0), 0.0)
 
         # innovation component + latent t-scale for active-staying particles
@@ -355,7 +374,11 @@ class RbParticleFilter:
                 "q50": q[2], "q75": q[3], "q95": q[4],
                 "p_idle": float(np.sum(w[self.r == IDLE]))}
 
-    def commit(self, obs: dict) -> None:
+    def commit(self, obs: dict, arrival_obs: float | None = None) -> None:
+        if arrival_obs is not None and not np.isnan(arrival_obs) and arrival_obs >= 100.0:
+            self.arr_age = 1
+        else:
+            self.arr_age += 1
         logl, *_ = self._apply_obs(obs, commit=True)
         logw = np.log(self.w + 1e-300) + logl
         logw -= logw.max()
