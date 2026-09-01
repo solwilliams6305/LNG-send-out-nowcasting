@@ -83,11 +83,20 @@ system; keep the honest-caveats section of README.md intact.
   the previous gas day); LNG-point nominations are empirically worse than
   persistence as forecasts (~70% archived post-renomination) — the filter's
   φ-fit rejects them, don't hand-force them in.
-- Filter (lng_nowcast/nowcast.py + scripts/run_nowcast.py): reference
-  implementation, Solomon owns the maths (see module ownership note).
-  Evaluation headline: intraday horizons 3–7× better than persistence with
-  calibrated 90% bands; H0 ties persistence (correct). Open: Zeebrugge
-  non-Gaussian profile, cov50 too wide, day-ahead drivers.
+- Filters: nowcast.py (bootstrap reference) and hsmm_rbpf.py (explicit-
+  duration HSMM + Rao-Blackwellized Kalman; 500 particles ≈ BPF's 4000
+  intraday, 15× faster, exact idle state, p_idle output; run via
+  scripts/run_nowcast_rb.py on the same panels/metrics). pgas.py = particle
+  Gibbs parameter learning (scripts/fit_pgas.py demo). RBPF gotcha learned:
+  posterior views must Kalman-update per-particle means, not just weights.
+  Evaluation headline: intraday 3–7× better than persistence, conformal
+  cov 0.48–0.62/0.87–0.93. Open: Zeebrugge profile kernel, RBPF H0 gap
+  (~3 GWh, PGAS-tunable), PGAS on full history.
+- Time-gated analysis scripts (rerun as the archive fattens):
+  revision_intraday.py (ALSI E→C trajectories + UK live-trajectory
+  integrals; PRELIMINARY finding: intraday E-row = carry-forward of
+  yesterday's C — verify over more days), berth_events.py (AIS occupancy
+  spells; wilhelmshaven berth box too loose, catches port traffic).
 
 ## Conventions
 

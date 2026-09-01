@@ -227,6 +227,34 @@ for the price event study.
   across all terminals and horizons — distribution-free guarantees on top of
   the model's interpretable bands, reported side by side.
 
+*2026-09-01 (maths pass: U2+U3+U5 reference implementations)*:
+
+- **HSMM-RBPF** (`hsmm_rbpf.py`): explicit-duration idle/active regimes
+  (Negative-Binomial sojourns — first-passage-time laws, fitted per terminal)
+  with the continuous states Rao-Blackwellized: conditional on the discrete
+  path, (I, S) is exactly linear-Gaussian and idle is the exact S = 0
+  boundary state, so a per-particle Kalman filter replaces sampling. Result:
+  **500 particles match the 4000-particle bootstrap filter intraday**
+  (Eems H2 2.45 vs 2.09 GWh, Gate 5.59 vs 4.47, Zeebrugge 25.0 vs 24.3) at
+  15× the speed, with a new output — p(idle) — and a ~3 GWh day-ahead cost
+  from the richer prior. Fitted structure is real: Grain flickers
+  (NB(4.9)/NB(5.2) spells) where Gate runs long regimes.
+- **PGAS** (`pgas.py`): particle Gibbs with ancestor sampling over the
+  semi-Markov switching model, 300 sweeps in ~8 s/terminal. Posteriors
+  correct the moment fits where they were weak (Grain restart level 66 ± 14
+  vs the moment fit's 29; p_broad only weakly identified at 0.20 ± 0.16) and
+  honestly refuse to identify what the data can't (Gate never idles in the
+  fit window ⇒ restart posterior = prior, one censored active spell). Run on
+  the short 152-day fit window — re-run on the full history is the obvious
+  next step.
+- Preliminary from 2 days of snapshots: **ALSI's intraday E-row appears to be
+  a carry-forward of yesterday's confirmed value at all four EU core
+  terminals** — if this holds over more days, the official platform's
+  intraday "estimate" contains no information and the ENTSOG-hourly nowcast
+  is strictly ahead by construction. UK live-trajectory integrals validate
+  against known daily magnitudes; berth/anchorage watch running (LNGSHIPS
+  EMPRESS still holding "FOR ORDER" off Grain).
+
 *2026-09-01 (price layer + first-pass event study)*:
 
 - Free daily price series secured at zero cost: **UK SAP** (PUBOB603 — the
