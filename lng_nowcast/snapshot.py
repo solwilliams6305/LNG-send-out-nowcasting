@@ -41,6 +41,10 @@ NATIONALGAS_COLS = [
     "snapshot_utc", "terminal", "metric", "maturity", "pub_id", "gas_day",
     "value", "unit", "quality", "generated_at", "detail", "item_name",
 ]
+NG_LIVE_COLS = [
+    "snapshot_utc", "series", "terminal", "sub", "epoch_ms", "time_label",
+    "value_mcm_d",
+]
 AIS_COLS = [
     "snapshot_utc", "mmsi", "name", "imo", "ship_type", "loa", "beam",
     "draught_m", "lat", "lon", "sog", "nav_status", "terminal", "berth_sub",
@@ -82,8 +86,8 @@ def run(window_days: int = 45, include_hourly: bool = True, ais_window_s: float 
     start = today - dt.timedelta(days=window_days)
 
     manifest = {"snapshot_utc": snap, "entsog_rows": 0, "entsog_hourly_rows": 0,
-                "alsi_rows": 0, "nationalgas_rows": 0, "ais_rows": 0,
-                "alsi_key_present": bool(config.ALSI_KEY),
+                "alsi_rows": 0, "nationalgas_rows": 0, "ng_live_rows": 0,
+                "ais_rows": 0, "alsi_key_present": bool(config.ALSI_KEY),
                 "ais_key_present": bool(config.AISSTREAM_KEY), "errors": ""}
     errors: list[str] = []
 
@@ -142,6 +146,18 @@ def run(window_days: int = 45, include_hourly: bool = True, ais_window_s: float 
         manifest["nationalgas_rows"] = _write(grows, NATIONALGAS_COLS, d / f"{stamp}.csv")
     except Exception as e:
         errors.append(f"nationalgas: {e}")
+
+    # --- National Gas live: UK intraday trajectories (not archived anywhere
+    # else — each snapshot preserves the 2-minutely day-so-far curves) ---
+    try:
+        lrows = nationalgas.snapshot_instantaneous()
+        for r in lrows:
+            r["snapshot_utc"] = snap
+        d = config.SNAPSHOT_DIR / "nationalgas_live"
+        d.mkdir(exist_ok=True)
+        manifest["ng_live_rows"] = _write(lrows, NG_LIVE_COLS, d / f"{stamp}.csv")
+    except Exception as e:
+        errors.append(f"nationalgas_live: {e}")
 
     # --- AIS: bounded listening window -> berth occupancy + static state ---
     if not config.AISSTREAM_KEY:

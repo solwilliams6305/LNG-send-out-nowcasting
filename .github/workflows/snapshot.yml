@@ -7,9 +7,11 @@
 # GitHub cron can drift by some minutes under load; snapshot rows carry their
 # own timestamps, so drift is harmless.
 #
-# Setup: repo secret ALSI_KEY (Settings -> Secrets -> Actions), and commit a
-# data/reference/alsi_facilities.json produced by scripts/bootstrap_alsi.py.
-# Without the secret the ENTSOG side still logs — do not gate the job on it.
+# Setup: repo secrets ALSI_KEY + AISSTREAM_KEY (Settings -> Secrets -> Actions),
+# and commit a data/reference/alsi_facilities.json from scripts/bootstrap_alsi.py.
+# Without the secrets the keyless sources still log — do not gate the job.
+# (File touched 2026-09-01 to re-register the cron after the 11:00 UTC slot
+# was silently skipped — a known GitHub scheduler quirk on fresh workflows.)
 
 name: snapshot
 

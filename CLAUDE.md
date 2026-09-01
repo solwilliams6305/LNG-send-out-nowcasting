@@ -48,7 +48,13 @@ system; keep the honest-caveats section of README.md intact.
   ~12:01 next day; stock ~15:56 same day. Grain = NTS1+NTS2 summed; ENTSOG
   milford_haven = south_hook + dragon. UK gas day 05:00 local = EU 06:00 CET
   at the same UTC instant year-round, so gas_day labels align with ENTSOG.
-  Intraday TODO: /api/gas-system-status-data POST payload undiscovered.
+  Intraday (cracked 2026-09-01 from the JS bundle): POST {"request": name} to
+  /api/gas-system-status-table (flowRatesTable: 2-minutely per sub-terminal
+  incl. GRAIN NTS 1/2, MILFORD HAVEN - SOUTH HOOK/- DRAGON, latest ~6 reads)
+  and /api/gas-system-status-graph (flowRatesGraphs: full day-so-far 2-min
+  trajectory per area). mcm/day rates; NOT archived publicly — our
+  nationalgas_live snapshots are the archive. UK filter horizons become
+  possible forward-only as these accumulate.
 - AIS (lng_nowcast/ais.py): aisstream.io websocket, key AISSTREAM_KEY,
   subscribe within 3 s, [lat, lon] corner order, max 3 connections; the server
   drops connections periodically — the listener reconnects and returns partial

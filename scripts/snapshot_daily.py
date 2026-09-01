@@ -29,7 +29,8 @@ def main() -> int:
     print(
         f"snapshot {m['snapshot_utc']}: entsog={m['entsog_rows']} rows, "
         f"hourly={m['entsog_hourly_rows']}, alsi={m['alsi_rows']}, "
-        f"nationalgas={m['nationalgas_rows']}, ais={m['ais_rows']} "
+        f"nationalgas={m['nationalgas_rows']}, ng_live={m['ng_live_rows']}, "
+        f"ais={m['ais_rows']} "
         f"(keys: alsi={m['alsi_key_present']}, ais={m['ais_key_present']})"
     )
     if m["errors"]:

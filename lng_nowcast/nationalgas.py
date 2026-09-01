@@ -20,9 +20,19 @@ Timing (empirical): D+1 physical send-out generated ~12:01 on D+1; opening
 stock generated ~15:56 same gas day. UK gas day 05:00-05:00 local — the same
 UTC instant as the EU 06:00 CET gas day year-round, so rows align with ENTSOG.
 
-TODO (intraday upgrade): /api/gas-system-status-data serves ~10-minutely
-per-entry-point flows (Grain, Milford Haven) but needs an undiscovered POST
-payload — sniff the gas-system-status page when needed.
+Intraday (cracked 2026-09-01 by reading the portal's JS bundle): the
+gas-system-status endpoints take POST {"request": "<name>"}, keyless.
+  /api/gas-system-status-table  {"request": "flowRatesTable"}
+      2-minutely instantaneous flow (mcm/day) per SYSTEM ENTRY NAME —
+      including GRAIN NTS 1/2 and MILFORD HAVEN - SOUTH HOOK / - DRAGON
+      (sub-terminal split!) — but only the ~6 latest readings.
+  /api/gas-system-status-graph  {"request": "flowRatesGraphs"}
+      the full gas day so far at 2-min cadence per terminal AREA
+      (ISLE OF GRAIN, MILFORD HAVEN aggregates), epoch-ms timestamps
+      starting at the 05:00 local gas-day start.
+Neither is archived anywhere public — the snapshot logger is the archive.
+Units are mcm/day instantaneous rate; convert to energy at analysis time
+with the per-terminal CV series (metric="cv").
 """
 
 from __future__ import annotations
@@ -160,6 +170,56 @@ def fetch_item(
                 "item_name": raw.get("itemName"),
             }
         )
+    return rows
+
+
+LIVE_SUBTERMINALS = {
+    "GRAIN NTS 1": ("grain", "nts1"),
+    "GRAIN NTS 2": ("grain", "nts2"),
+    "MILFORD HAVEN - SOUTH HOOK": ("south_hook", ""),
+    "MILFORD HAVEN - DRAGON": ("dragon", ""),
+}
+LIVE_AREAS = {"ISLE OF GRAIN": "grain", "MILFORD HAVEN": "milford_haven"}
+
+
+def _post_status(endpoint: str, request: str) -> dict:
+    headers = {"User-Agent": config.USER_AGENT, "Content-Type": "application/json"}
+    r = requests.post(f"{BASE}/{endpoint}", json={"request": request},
+                      headers=headers, timeout=config.HTTP_TIMEOUT)
+    r.raise_for_status()
+    return r.json()
+
+
+def snapshot_instantaneous() -> list[dict]:
+    """Current UK intraday state: the day-so-far 2-min trajectory per LNG area
+    (flowRatesGraphs) plus the latest sub-terminal readings (flowRatesTable).
+    Values in mcm/day instantaneous rate."""
+    rows: list[dict] = []
+
+    payload = _post_status("gas-system-status-graph", "flowRatesGraphs")
+    for area, terminal in LIVE_AREAS.items():
+        series = (payload.get(area) or {}).get("data") or []
+        for pt in series:
+            rows.append({
+                "series": "area_trajectory", "terminal": terminal, "sub": "",
+                "epoch_ms": pt.get("dateTime"), "time_label": None,
+                "value_mcm_d": pt.get(area),
+            })
+
+    payload = _post_status("gas-system-status-table", "flowRatesTable")
+    data = (payload.get("data") or {})
+    times = data.get("timeHeaders") or []
+    for row in data.get("data") or []:
+        name = row.get("SYSTEM ENTRY NAME")
+        if name not in LIVE_SUBTERMINALS:
+            continue
+        terminal, sub = LIVE_SUBTERMINALS[name]
+        for tlab in times:
+            rows.append({
+                "series": "subterminal_latest", "terminal": terminal, "sub": sub,
+                "epoch_ms": None, "time_label": tlab,
+                "value_mcm_d": row.get(tlab),
+            })
     return rows
 
 
