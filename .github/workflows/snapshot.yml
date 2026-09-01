@@ -52,11 +52,22 @@ jobs:
           AISSTREAM_KEY: ${{ secrets.AISSTREAM_KEY }}
         run: python scripts/snapshot_daily.py
 
-      - name: Commit snapshots
+      - name: Build dashboard data
+        env:
+          ALSI_KEY: ${{ secrets.ALSI_KEY }}
+        run: |
+          python scripts/backfill_entsog.py --start $(date -u -d '210 days ago' +%F) --tier all || true
+          python scripts/backfill_nationalgas.py --start $(date -u -d '210 days ago' +%F) || true
+          python scripts/backfill_alsi.py --start $(date -u -d '210 days ago' +%F) || true
+          python scripts/backfill_stress.py --start $(date -u -d '210 days ago' +%F) || true
+          python scripts/backfill_prices.py --start $(date -u -d '210 days ago' +%F) || true
+          python scripts/build_dashboard_data.py
+
+      - name: Commit snapshots + dashboard
         run: |
           git config user.name "snapshot-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/snapshots
+          git add data/snapshots docs/data.json
           git commit -m "snapshot $(date -u +%Y-%m-%dT%H:%M)Z" || echo "nothing new"
           git pull --rebase origin main
           git push

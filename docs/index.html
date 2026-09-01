@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NW LNG Stress Monitor</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #f6f7f8; --surface: #fcfcfb; --panel: #eef0f2;
+    --ink: #16202b; --ink2: #52606e; --muted: #8a97a3;
+    --grid: #e1e0d9; --baseline: #c3c2b7; --border: rgba(11,11,11,.10);
+    --blue: #2a78d6; --orange: #eb6834; --aqua: #1baf7a;
+    --good: #0ca30c; --warn: #b98200; --serious: #c05f33; --crit: #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1116; --surface: #151b22; --panel: #1b232c;
+      --ink: #e3e9ee; --ink2: #a6b2bd; --muted: #6f7d8a;
+      --grid: #26303a; --baseline: #38434e; --border: rgba(255,255,255,.10);
+      --blue: #3987e5; --orange: #d95926; --aqua: #199e70;
+      --good: #35b04a; --warn: #d9a53a; --serious: #e08a5e; --crit: #e05b5b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    font-size: 14px; line-height: 1.45;
+  }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  header {
+    display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: baseline;
+    padding: 14px 20px 10px;
+  }
+  header h1 { font-size: 19px; font-weight: 700; margin: 0; letter-spacing: -.01em; }
+  header .sub { color: var(--ink2); font-size: 12.5px; }
+  header .fresh { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 999px; padding: 2px 9px; color: var(--ink2);
+  }
+  .chip b { color: var(--ink); font-weight: 500; }
+  main { padding: 0 20px 30px; max-width: 1340px; margin: 0 auto; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .tile {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px;
+  }
+  .tile .k { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+  .tile .v { font-size: 26px; font-weight: 700; letter-spacing: -.02em; margin-top: 2px; }
+  .tile .v small { font-size: 13px; font-weight: 500; color: var(--ink2); }
+  .tile .d { font-size: 11.5px; color: var(--ink2); margin-top: 2px; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: baseline; }
+  .grid { display: grid; grid-template-columns: minmax(340px, 7fr) minmax(300px, 5fr); gap: 12px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+  }
+  .card h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--muted); font-weight: 600; margin: 0; padding: 10px 14px 0;
+  }
+  #map { height: 560px; background: var(--panel); }
+  .charts { display: flex; flex-direction: column; gap: 12px; }
+  .chart-body { padding: 4px 8px 8px; position: relative; }
+  svg text { font-family: "IBM Plex Mono", monospace; font-size: 10px; fill: var(--muted); }
+  .tooltip {
+    position: absolute; pointer-events: none; display: none;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+    padding: 4px 8px; font-family: "IBM Plex Mono", monospace; font-size: 11px;
+    color: var(--ink); box-shadow: 0 2px 8px rgba(0,0,0,.18); white-space: nowrap; z-index: 500;
+  }
+  .terms { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 10px; margin-top: 12px; }
+  .term { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+  .term:hover, .term.hl { outline: 2px solid var(--blue); outline-offset: -1px; }
+  .term .n { font-weight: 600; font-size: 13px; }
+  .term .c { color: var(--muted); font-size: 11px; }
+  .term .val { font-size: 20px; font-weight: 700; margin: 2px 0; }
+  .term .val small { font-size: 11px; font-weight: 500; color: var(--ink2); }
+  .tankbar { height: 5px; background: var(--panel); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  .tankbar i { display: block; height: 100%; background: var(--aqua); border-radius: 3px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); padding: 6px 14px; border-bottom: 1px solid var(--grid); }
+  td { padding: 6px 14px; border-bottom: 1px solid var(--grid); color: var(--ink2); font-variant-numeric: tabular-nums; }
+  td.name { color: var(--ink); font-weight: 600; }
+  .pill { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; padding: 1px 7px; border-radius: 999px; }
+  .pill.berth { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+  .pill.carrier { background: color-mix(in srgb, var(--orange) 18%, transparent); color: var(--orange); }
+  .pill.transit { background: color-mix(in srgb, var(--blue) 18%, transparent); color: var(--blue); }
+  footer { max-width: 1340px; margin: 18px auto 0; padding: 0 20px 26px; color: var(--muted); font-size: 11.5px; line-height: 1.6; }
+  footer a { color: var(--ink2); }
+  .twocol { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-top: 12px; }
+  @media (max-width: 900px) { .twocol { grid-template-columns: 1fr; } }
+  .empty { padding: 14px; color: var(--muted); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>NW LNG Stress Monitor</h1>
+  <span class="sub">terminals · tanks · ships · days of cover — rebuilt from free public data 3×/day</span>
+  <span class="fresh" id="fresh"></span>
+</header>
+<main>
+  <div class="tiles" id="tiles"></div>
+  <div class="grid">
+    <div class="card"><div id="map"></div></div>
+    <div class="charts">
+      <div class="card"><h2>Days of cover — NW LNG tanks ÷ send-out</h2><div class="chart-body" id="ch-cover"></div></div>
+      <div class="card"><h2>EU storage fullness % (the incumbent dial)</h2><div class="chart-body" id="ch-storage"></div></div>
+      <div class="card"><h2>UK SAP, p/kWh (on-the-day gas price)</h2><div class="chart-body" id="ch-sap"></div></div>
+    </div>
+  </div>
+  <div class="terms" id="terms"></div>
+  <div class="twocol">
+    <div class="card"><h2>Vessels of interest — latest AIS window</h2><div id="vessels"></div></div>
+    <div class="card"><h2>Chokepoint carrier transits, 7 d</h2><div id="transits"></div></div>
+  </div>
+</main>
+<footer>
+  Research project, not investment advice. Sources: <a href="https://alsi.gie.eu">GIE ALSI</a> &amp; <a href="https://agsi.gie.eu">AGSI</a> (data © GIE),
+  <a href="https://transparency.entsog.eu">ENTSOG Transparency</a>, <a href="https://data.nationalgas.com">National Gas</a>, <a href="https://aisstream.io">aisstream.io</a>.
+  Map imagery © Esri. TTF prices are omitted from this public build for licensing reasons.
+  Built by the <a href="https://github.com/solwilliams6305/LNG-send-out-nowcasting">lng-nowcast</a> pipeline; page refreshes with each snapshot commit.
+</footer>
+<script>
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+function lineChart(el, dates, values, {color, height=150, refValue=null, refLabel="", decimals=1}={}) {
+  el.innerHTML = "";
+  const W = el.clientWidth - 8, H = height, padL = 38, padR = 44, padT = 10, padB = 18;
+  const xs = dates.map((_, i) => padL + i * (W - padL - padR) / Math.max(dates.length - 1, 1));
+  const finite = values.filter(v => v != null);
+  let lo = Math.min(...finite), hi = Math.max(...finite);
+  if (refValue != null) { lo = Math.min(lo, refValue); hi = Math.max(hi, refValue); }
+  const pad = (hi - lo) * 0.08 || 1; lo -= pad; hi += pad;
+  const y = v => padT + (hi - v) * (H - padT - padB) / (hi - lo);
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("width", "100%"); svg.setAttribute("height", H);
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const add = (tag, attrs, parent=svg) => { const e = document.createElementNS(svgNS, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); parent.appendChild(e); return e; };
+  for (let g = 0; g < 4; g++) {
+    const gv = lo + (hi - lo) * g / 3, gy = y(gv);
+    add("line", {x1: padL, x2: W - padR, y1: gy, y2: gy, stroke: css("--grid"), "stroke-width": .7});
+    add("text", {x: padL - 5, y: gy + 3, "text-anchor": "end"}).textContent = gv.toFixed(decimals);
+  }
+  [0, Math.floor(dates.length/2), dates.length-1].forEach(i => {
+    add("text", {x: xs[i], y: H - 4, "text-anchor": i===0?"start":(i===dates.length-1?"end":"middle")})
+      .textContent = dates[i].slice(5);
+  });
+  if (refValue != null) {
+    add("line", {x1: padL, x2: W - padR, y1: y(refValue), y2: y(refValue),
+                 stroke: css("--baseline"), "stroke-width": 1, "stroke-dasharray": "4 4"});
+    add("text", {x: W - padR + 4, y: y(refValue) + 3}).textContent = refLabel;
+  }
+  const pts = values.map((v, i) => v == null ? null : `${xs[i]},${y(v)}`);
+  let d = "", pen = false;
+  pts.forEach(p => { if (p == null) { pen = false; return; } d += (pen ? "L" : "M") + p; pen = true; });
+  add("path", {d, fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round"});
+  const lastI = values.length - 1 - [...values].reverse().findIndex(v => v != null);
+  add("circle", {cx: xs[lastI], cy: y(values[lastI]), r: 3.4, fill: color});
+  const lv = add("text", {x: xs[lastI] + 6, y: y(values[lastI]) + 3});
+  lv.textContent = values[lastI].toFixed(decimals); lv.setAttribute("fill", css("--ink")); lv.style.fontWeight = "600";
+  // hover layer
+  const tip = document.createElement("div"); tip.className = "tooltip"; el.appendChild(tip);
+  const cross = add("line", {y1: padT, y2: H - padB, stroke: css("--baseline"), "stroke-width": 1, visibility: "hidden"});
+  svg.addEventListener("mousemove", ev => {
+    const r = svg.getBoundingClientRect();
+    const px = (ev.clientX - r.left) * W / r.width;
+    let best = 0, bd = 1e9;
+    xs.forEach((x, i) => { const dd = Math.abs(x - px); if (dd < bd && values[i] != null) { bd = dd; best = i; } });
+    cross.setAttribute("x1", xs[best]); cross.setAttribute("x2", xs[best]); cross.setAttribute("visibility", "visible");
+    tip.style.display = "block";
+    tip.style.left = Math.min(xs[best] * r.width / W + 10, r.width - 120) + "px";
+    tip.style.top = "8px";
+    tip.textContent = `${dates[best]}  ${values[best].toFixed(decimals)}`;
+  });
+  svg.addEventListener("mouseleave", () => { cross.setAttribute("visibility", "hidden"); tip.style.display = "none"; });
+  el.appendChild(svg);
+}
+
+function spark(el, values, color) {
+  const W = el.clientWidth || 190, H = 34;
+  const fin = values.filter(v => v != null);
+  const lo = Math.min(...fin), hi = Math.max(...fin) || 1;
+  const xs = values.map((_, i) => i * W / Math.max(values.length - 1, 1));
+  const y = v => 2 + (hi - v) * (H - 4) / Math.max(hi - lo, 1e-9);
+  let d = "", pen = false;
+  values.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen?"L":"M") + xs[i] + "," + y(v); pen = true; });
+  el.innerHTML = `<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    <path d="${d}" fill="none" stroke="${color}" stroke-width="1.6"/></svg>`;
+}
+
+fetch("data.json").then(r => r.json()).then(D => {
+  const S = D.stress;
+  // freshness chips
+  const age_h = (Date.now() - new Date(D.generated_utc)) / 3.6e6;
+  const f = D.freshness || {};
+  document.getElementById("fresh").innerHTML = [
+    `<span class="chip"><b>${age_h < 1 ? Math.round(age_h*60) + " min" : age_h.toFixed(1) + " h"}</b> old${age_h > 14 ? " ⚠" : ""}</span>`,
+    `<span class="chip">entsog <b>${f.entsog_rows ?? "?"}</b></span>`,
+    `<span class="chip">alsi <b>${f.alsi_rows ?? "?"}</b></span>`,
+    `<span class="chip">uk <b>${f.nationalgas_rows ?? "?"}</b>+<b>${f.ng_live_rows ?? "?"}</b></span>`,
+    `<span class="chip">ais <b>${f.ais_rows ?? "?"}</b></span>`,
+  ].join("");
+
+  // tiles
+  const covRatio = S.cover_now / S.cover_median;
+  const covColor = covRatio > 1.05 ? "--good" : covRatio > 0.85 ? "--warn" : "--crit";
+  const stoColor = S.storage_now > 80 ? "--good" : S.storage_now > 65 ? "--warn" : "--crit";
+  document.getElementById("tiles").innerHTML = `
+    <div class="tile"><div class="k">Days of cover</div>
+      <div class="v"><span class="dot" style="background:var(${covColor})"></span>${S.cover_now}<small> d</small></div>
+      <div class="d">median ${S.cover_median} d — LNG tanks ÷ current burn</div></div>
+    <div class="tile"><div class="k">EU storage</div>
+      <div class="v"><span class="dot" style="background:var(${stoColor})"></span>${S.storage_now}<small> %</small></div>
+      <div class="d">≈90% typical at this date in 2024–25</div></div>
+    <div class="tile"><div class="k">NW send-out</div><div class="v">${S.burn_now}<small> GWh/d</small></div>
+      <div class="d">7-day mean, 9 terminals</div></div>
+    <div class="tile"><div class="k">Tank energy</div><div class="v">${(S.tank_now/1000).toFixed(1)}<small> TWh</small></div>
+      <div class="d">EU core + UK LNG tanks</div></div>
+    <div class="tile"><div class="k">UK SAP</div><div class="v">${S.sap_now.toFixed(2)}<small> p/kWh</small></div>
+      <div class="d">system average price</div></div>`;
+
+  // charts — rendered after layout settles (clientWidth is garbage before
+  // the stylesheet and grid have resolved) and re-rendered on resize.
+  function renderCharts() {
+    lineChart(document.getElementById("ch-cover"), S.cover.dates, S.cover.values,
+              {color: css("--blue"), refValue: S.cover_median, refLabel: "median"});
+    lineChart(document.getElementById("ch-storage"), S.storage.dates, S.storage.values,
+              {color: css("--aqua"), refValue: 90, refLabel: "typical"});
+    lineChart(document.getElementById("ch-sap"), S.sap.dates, S.sap.values,
+              {color: css("--orange"), decimals: 2});
+    document.querySelectorAll(".term").forEach(el => {
+      const t = D.terminals.find(x => "term-" + x.slug === el.id);
+      if (t) spark(el.querySelector(".sp"), t.sendout.values, css("--blue"));
+    });
+    try { map.invalidateSize(); } catch (e) {}
+  }
+  requestAnimationFrame(() => requestAnimationFrame(renderCharts));
+  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderCharts, 150); });
+
+  // map
+  const map = L.map("map", {scrollWheelZoom: false}).setView([51.6, 3.4], 6);
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    {attribution: "Imagery © Esri", maxZoom: 17}).addTo(map);
+  const markers = {};
+  D.terminals.forEach(t => {
+    const m = L.circleMarker([t.lat, t.lon], {
+      radius: Math.max(5, Math.sqrt(t.latest) / 1.6), color: "#fff", weight: 1.5,
+      fillColor: css("--blue"), fillOpacity: .9,
+    }).addTo(map).bindPopup(`<b>${t.name}</b><br>${t.latest} GWh/d`);
+    m.on("click", () => highlight(t.slug));
+    markers[t.slug] = m;
+  });
+  D.vessels.forEach(v => {
+    if (v.lat == null) return;
+    const kind = v.at_berth ? "--good" : v.carrier ? "--orange" : "--muted";
+    L.circleMarker([v.lat, v.lon], {radius: 4, color: "#fff", weight: 1,
+      fillColor: css(kind), fillOpacity: .95}).addTo(map)
+      .bindPopup(`<b>${v.name ?? "unknown"}</b><br>${v.at_berth ? "at berth" : v.carrier ? "carrier" : "vessel"}`
+        + (v.dest ? ` → ${v.dest}` : "") + (v.draught ? `<br>draught ${v.draught} m` : ""));
+  });
+
+  // terminal cards
+  const box = document.getElementById("terms");
+  D.terminals.sort((a, b) => b.latest - a.latest).forEach(t => {
+    const el = document.createElement("div");
+    el.className = "term"; el.id = "term-" + t.slug;
+    const tankPct = t.tank && t.tank.values.length
+      ? Math.min(100, 100 * t.tank.values[t.tank.values.length-1] / Math.max(...t.tank.values)) : null;
+    el.innerHTML = `<div class="n">${t.name}</div><div class="c">${t.country} · ${t.tier}</div>
+      <div class="val">${t.latest}<small> GWh/d</small></div><div class="sp"></div>
+      ${tankPct != null ? `<div class="tankbar" title="tank vs 90-day max"><i style="width:${tankPct}%"></i></div>` : ""}`;
+    el.onclick = () => { markers[t.slug]?.openPopup(); map.panTo(markers[t.slug].getLatLng()); highlight(t.slug); };
+    box.appendChild(el);
+    spark(el.querySelector(".sp"), t.sendout.values, css("--blue"));
+  });
+  function highlight(slug) {
+    document.querySelectorAll(".term").forEach(e => e.classList.remove("hl"));
+    document.getElementById("term-" + slug)?.classList.add("hl");
+  }
+
+  // vessels table
+  const vs = D.vessels.filter(v => v.at_berth || v.carrier);
+  document.getElementById("vessels").innerHTML = vs.length ? `<table>
+    <tr><th>vessel</th><th>where</th><th>status</th><th>sog</th><th>draught</th><th>dest</th></tr>
+    ${vs.map(v => `<tr><td class="name">${v.name ?? "—"}</td><td>${(v.terminal||"").replace("transit_","→ ")}</td>
+      <td><span class="pill ${v.at_berth?"berth":v.terminal?.startsWith("transit")?"transit":"carrier"}">
+      ${v.at_berth?"at berth":v.terminal?.startsWith("transit")?"transit":"carrier"}</span></td>
+      <td>${v.sog ?? "—"}</td><td>${v.draught ?? "—"}</td><td>${v.dest ?? "—"}</td></tr>`).join("")}
+    </table>` : `<div class="empty">no carriers in the latest window</div>`;
+
+  // transits
+  const tr = Object.entries(D.transits_7d || {});
+  document.getElementById("transits").innerHTML = tr.length
+    ? `<table><tr><th>chokepoint</th><th>unique carriers</th></tr>
+       ${tr.map(([k, n]) => `<tr><td class="name">${k}</td><td>${n}</td></tr>`).join("")}</table>`
+    : `<div class="empty">accumulating — the chokepoint layer armed on 1 Sep 2026; counts appear as carriers pass Gibraltar, Dover, Ushant, Port Said and Finisterre.</div>`;
+}).catch(e => {
+  document.getElementById("tiles").innerHTML = `<div class="tile"><div class="k">error</div><div class="d">could not load data.json — ${e}</div></div>`;
+});
+</script>
+</body>
+</html>
