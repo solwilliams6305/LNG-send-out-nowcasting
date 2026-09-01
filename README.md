@@ -79,6 +79,21 @@ all-versions pull — 17,628 published versions, 2024→today)*:
   day's D+1 also published 3 days late. This is why the filter carries
   heavy-tailed observation errors and three-way triangulation.
 
+*2026-09-02 (arrivals dataset — the filter's jump prior, calibrated)*:
+
+- Inverting the mass balance `A_t = ΔI_t + S_t` across 2024→today yields
+  **1,446 cargo-arrival events** (UK direct from National Gas inflows; EU
+  implied from ALSI). **Five EU terminals' median event energy sits within 1%
+  of the 172k-class discharge reference (1096 GWh)** — Dunkerque 1095, Gate
+  1105, Zeebrugge 1096, Montoir 1092 — so the physics layer, GIE's GCV, and
+  the observed jumps all agree before any AIS data exists.
+- Attribution caveats, quantified: multi-berth terminals chain overlapping
+  ships into >3-day clusters (a ~2,000–2,200 GWh "double cargo" bump); Dragon's
+  small tanks stage single cargoes across paused days (close pairs sum to
+  Q-Flex energies, e.g. 1351.5 vs the 1357 reference). Ship-level attribution
+  needs AIS identity — but the filter consumes *daily* arrival energy, which
+  this dataset measures directly.
+
 *2026-09-02 (AIS live — first listens)*:
 
 - The stream works (233 vessels heard in 3 minutes across the capture boxes),
@@ -196,8 +211,12 @@ near-independent measurements; calibration (do 90% intervals cover 90%?).
 - [x] W2: UK revision process quantified from the retroactive all-versions pull
 - [x] W3: AIS layer built (aisstream client, berth boxes, cargo inversion
       physics, snapshot integration + continuous logger) — key pending
-- [ ] W2/W3: EU intraday E→C EDA as snapshots accumulate; verify berth boxes
-      against first observed traffic
+- [x] W3/W5 prep: ALSI historical backfill; 1,446-event arrivals dataset with
+      jump sizes calibrated against vessel-class physics
+- [ ] W5–6: the state-space filter (jump-diffusion inventory/send-out model,
+      heavy-tailed observation errors, E/C-status-dependent noise)
+- [ ] W2/W3 (data-gated): EU intraday E→C EDA as snapshots accumulate; AIS
+      berth-event reconstruction + berth-box verification from observed tracks
 - [ ] W3–4: AIS layer (aisstream.io): berth polygons, draught deltas → arrivals
 - [ ] W5–6: state-space filter; intraday nowcast at the 19:30 CET horizon
 - [ ] W7–8: validation, calibration, TTF event study; write-up
