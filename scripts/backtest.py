@@ -91,7 +91,8 @@ def build() -> pd.DataFrame:
     si["value"] = pd.to_numeric(si.value, errors="coerce")
     panel["storage"] = si[si.series == "agsi_eu_full_pct"].set_index("date").value
 
-    ev = pd.read_csv(config.RAW_DIR / "nowcast_eval.csv")
+    import os
+    ev = pd.read_csv(config.RAW_DIR / os.environ.get("LNG_EVAL_FILE", "nowcast_eval.csv"))
     eu = ev[ev.terminal.isin(["gate", "eems", "zeebrugge"])]
     h0 = eu[eu.horizon == "H0"].set_index(["terminal", "gas_day"]).q50
     h1 = eu[eu.horizon == "H1"].set_index(["terminal", "gas_day"]).q50

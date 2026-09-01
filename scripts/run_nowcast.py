@@ -25,10 +25,15 @@ import pandas as pd
 from lng_nowcast import arrivals, config, conformal
 from lng_nowcast.nowcast import ParticleFilter, TerminalModel, coverage
 
+import os
+
 EU = ["gate", "zeebrugge", "dunkerque", "eems"]
 UK = ["grain", "south_hook"]
 WARMUP_DAYS = 60
-EVAL_START = "2024-06-01"
+# Overridable so extended-window runs (e.g. the event-thread study from
+# 2022) don't disturb the paper's canonical evaluation file.
+EVAL_START = os.environ.get("LNG_EVAL_START", "2024-06-01")
+EVAL_OUT = os.environ.get("LNG_EVAL_OUT", "nowcast_eval.csv")
 
 
 def eu_panels() -> dict[str, pd.DataFrame]:
@@ -175,6 +180,16 @@ def run_terminal(name: str, p: pd.DataFrame, horizons: list[str],
         return pd.DataFrame()
 
     fit = p[p.index < EVAL_START]
+    eval_from = EVAL_START
+    if len(fit) < 150:
+        # Terminal came online after the fit window began (e.g. Eems,
+        # commissioned Sep 2022): fit on its first year of data and start
+        # its evaluation only after that — still leak-free, per-terminal.
+        fit = p.iloc[: min(365, max(len(p) - 60, 0))]
+        if len(fit) < 150:
+            print(f"{name}: too little history for a leak-free fit, skipping")
+            return pd.DataFrame()
+        eval_from = str(fit.index[-1])
     model = TerminalModel.from_history(
         name,
         fit.s_truth.to_numpy(float),
@@ -200,7 +215,7 @@ def run_terminal(name: str, p: pd.DataFrame, horizons: list[str],
         pf.commit({"s_obs": (r.s_truth, model.rel_flow, model.flow_floor),
                    "i_obs": r.inv_gwh if "inv_gwh" in r else None})
 
-        if k >= WARMUP_DAYS and day >= EVAL_START:
+        if k >= WARMUP_DAYS and day >= eval_from:
             for h, post in views.items():
                 ps = post["S"]
                 rows.append({
@@ -247,7 +262,7 @@ def main() -> int:
     for t, (p, rels) in uk_panels().items():
         frames.append(run_terminal(t, p, ["H0"], rels))
     ev = pd.concat([f for f in frames if len(f)], ignore_index=True)
-    out = config.RAW_DIR / "nowcast_eval.csv"
+    out = config.RAW_DIR / EVAL_OUT
     ev.to_csv(out, index=False)
     print(f"\n{len(ev)} nowcast rows -> {out}\n")
     m = metrics(ev).sort_values(["terminal", "horizon"])
