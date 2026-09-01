@@ -210,6 +210,23 @@ for the price event study.
   Nomination queries indefinitely with zero bytes (client now times out
   fast, retries once, and skips).
 
+*2026-09-01 (upgrades U1 + U4: bridge observation model + conformal wrapper)*:
+
+- The intraday cumulative now follows a **Brownian-bridge observation model**
+  with per-terminal mean profiles and robust per-hour scales, fitted on the
+  training window only (the earlier per-horizon noise fit quietly leaked the
+  evaluation period). Leak-free results *improved*: Gate evening MAE 4.5 GWh
+  (persistence 20.6), Eems 2.1, Zeebrugge 24.3 — Zeebrugge's systematic
+  +2.4%-by-hour-11 ramp is now an explicit profile term, and its residual
+  bridge scale (5–7% vs the 1% floor at metronomic Gate/Eems) quantifies how
+  much harder transshipment terminals are. Empirical finding for the model
+  section: the deviation process at GTS terminals is *smoother than Brownian*
+  — the bridge-kernel fit is an open refinement.
+- An **adaptive conformal layer** (Gibbs–Candès) now wraps every stream:
+  walk-forward coverage lands at 0.48–0.62 (50% bands) and 0.87–0.93 (90%)
+  across all terminals and horizons — distribution-free guarantees on top of
+  the model's interpretable bands, reported side by side.
+
 ## Model (target state)
 
 Per terminal, a slow–fast state-space model on gas-day resolution:

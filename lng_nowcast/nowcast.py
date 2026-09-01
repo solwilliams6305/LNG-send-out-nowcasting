@@ -189,11 +189,17 @@ class ParticleFilter:
         m = self.m
         d = np.zeros(m.n_particles)
         if "cum_h" in obs:
-            h, cum, rel = obs["cum_h"] if len(obs["cum_h"]) == 3 else (*obs["cum_h"], None)
+            # Bridge observation model (memo U1): the deviation of cumulative
+            # flow from the day's straight line vanishes at both ends of the
+            # gas day, so model it as sigma_p * S * B(u) with B a Brownian
+            # bridge — Var = sigma_p^2 S^2 u(1-u) — plus a terminal-specific
+            # mean profile m_u for systematic intraday shape (Zeebrugge ramps).
+            h, cum, prof = obs["cum_h"] if len(obs["cum_h"]) == 3 else (*obs["cum_h"], None)
             if h > 0 and cum is not None and not np.isnan(cum):
-                pred = self.S * h / 24.0
-                r = m.rel_cum if rel is None else rel
-                sd = r * np.maximum(pred, 1.0) + 2.0
+                u = h / 24.0
+                m_u, sigma_p = prof if prof is not None else (0.0, m.rel_cum * 3)
+                pred = self.S * (u + m_u)
+                sd = sigma_p * np.maximum(self.S, 1.0) * np.sqrt(u * (1 - u)) + 2.0
                 d += -0.5 * ((cum - pred) / sd) ** 2 - np.log(sd)
         if "s_obs" in obs:
             val, rel, floor = obs["s_obs"]

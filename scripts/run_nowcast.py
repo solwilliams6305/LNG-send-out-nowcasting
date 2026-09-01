@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import numpy as np
 import pandas as pd
 
-from lng_nowcast import arrivals, config
+from lng_nowcast import arrivals, config, conformal
 from lng_nowcast.nowcast import ParticleFilter, TerminalModel, coverage
 
 EU = ["gate", "zeebrugge", "dunkerque", "eems"]
@@ -92,21 +92,35 @@ def eu_panels() -> dict[str, pd.DataFrame]:
 
     cum4, cum11 = cum_through(4), cum_through(11)
 
-    # Empirical intraday-profile error: how well does cum_h * 24/h predict the
-    # day? This, not an assumed 2 %, sets the observation noise per terminal.
+    # Bridge parameters (memo U1), fitted on the pre-evaluation window only:
+    # mean intraday profile m_u = E[cum_u/S - u] (Zeebrugge ramps
+    # systematically) and bridge scale sigma_p from normalized deviations
+    # z = (cum_u/S - u - m_u) / sqrt(u(1-u)).
     profile_rel = {}
     for t in conv:
         cc = pd.concat([cum4.xs(t, level="terminal"), cum11.xs(t, level="terminal"),
                         s.xs(t, level="terminal")], axis=1).dropna()
-        cc = cc[cc.s_truth > 5]
-        rels = {}
+        cc = cc[(cc.s_truth > 5) & (cc.index < EVAL_START)]
+        if len(cc) < 60:
+            continue
+        # sigma_p is fitted per hour: empirically the deviation process at the
+        # GTS terminals is *smoother than Brownian* (evening deviations smaller
+        # than the bridge kernel extrapolates from the morning), so a pooled
+        # scale over-widens the evening channel. Fitting the true covariance
+        # kernel of D(u) — OU-bridge or similar — is Solomon's U1 refinement.
+        pars = {}
         for h, col in ((4, "cum4"), (11, "cum11")):
-            # If cum*24/h = S(1+rho*eps), then sd(cum) = rho*cum: the relative
-            # projection error passes through to the cumulative unscaled.
-            r = (cc[col] * 24 / h - cc.s_truth) / cc.s_truth
-            rels[h] = float(np.clip(r.std(), 0.005, 0.5))
-        profile_rel[t] = rels
-        print(f"profile rel {t}: h4 {rels[4]:.3f}, h11 {rels[11]:.3f}")
+            u = h / 24.0
+            dev = cc[col] / cc.s_truth - u
+            m_u = float(dev.median())
+            z = (dev - m_u) / np.sqrt(u * (1 - u))
+            # Robust scale: outage/ramp days belong to the regime proposal,
+            # not to the everyday intraday-profile noise.
+            sp = 1.4826 * float(np.abs(z - z.median()).median())
+            pars[h] = (m_u, float(np.clip(sp, 0.01, 1.0)))
+        profile_rel[t] = pars
+        print(f"bridge {t}: m4 {pars[4][0]:+.4f} sp4 {pars[4][1]:.3f} | "
+              f"m11 {pars[11][0]:+.4f} sp11 {pars[11][1]:.3f}")
 
     alsi = arrivals.eu_daily_panel().set_index(["terminal", "gas_day"])
 
@@ -202,7 +216,9 @@ def run_terminal(name: str, p: pd.DataFrame, horizons: list[str],
 
 def metrics(ev: pd.DataFrame) -> pd.DataFrame:
     """Point nowcast = posterior median (mean is biased at the idle-zero atom).
-    Active-day columns restrict to truth > 5 GWh — where nowcasting matters."""
+    Active-day columns restrict to truth > 5 GWh — where nowcasting matters.
+    cov*_c columns are the adaptively conformalized bands (memo U4)."""
+    ev = conformal.wrap_eval(ev)
     out = []
     for (t, h), g in ev.groupby(["terminal", "horizon"]):
         tr = g.truth.to_numpy(float)
@@ -213,6 +229,8 @@ def metrics(ev: pd.DataFrame) -> pd.DataFrame:
             "mae_persist": np.nanmean(np.abs(g.persist - g.truth)),
             "cov50": coverage(tr, g.q25.to_numpy(float), g.q75.to_numpy(float)),
             "cov90": coverage(tr, g.q05.to_numpy(float), g.q95.to_numpy(float)),
+            "cov50_c": coverage(tr, g.q25_c.to_numpy(float), g.q75_c.to_numpy(float)),
+            "cov90_c": coverage(tr, g.q05_c.to_numpy(float), g.q95_c.to_numpy(float)),
             "act_mae_filter": np.nanmean(np.abs(act.q50 - act.truth)) if len(act) else np.nan,
             "act_mae_persist": np.nanmean(np.abs(act.persist - act.truth)) if len(act) else np.nan,
         }
