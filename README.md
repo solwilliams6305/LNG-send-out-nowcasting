@@ -255,6 +255,28 @@ for the price event study.
   against known daily magnitudes; berth/anchorage watch running (LNGSHIPS
   EMPRESS still holding "FOR ORDER" off Grain).
 
+*2026-09-01 (evening: kernel answered, hazards fitted, PGAS stress-tested)*:
+
+- **The intraday deviation process is nearly maximally persistent**: fitting
+  bridge kernels to 789–947 active days per terminal gives fBm-bridge
+  Ĥ ≈ 0.98 everywhere, cutting correlation misfit 81–87% vs the Brownian
+  bridge (empirical corr(d(4h), d(11h)) = 0.71–0.86 vs Brownian 0.49).
+  Interpretation: each day's deviation is essentially **one random ramp
+  factor** — morning reveals most of the day (`scripts/bridge_kernel.py`).
+- **Cargo arrivals are emphatically non-Poisson**: the empirical hazard at a
+  1-day gap is exactly zero at *every* terminal (berth turnaround), rising
+  with age at scheduled terminals (Gate → 0.56 by day 8, Wilhelmshaven →
+  0.43). An age-dependent arrival hazard is a justified drop-in filter
+  upgrade; Dragon's gaps also mix operational spacing with seasonal idling —
+  condition on regime when refining (`scripts/arrival_hazards.py`).
+- **PGAS → RBPF refit** (`scripts/refit_rbpf_pgas.py`, leak-free): metrics a
+  wash vs moment fits (conformal calibration holds throughout) — and the
+  full-history stability run exposed two honest identifiability lessons:
+  prior-less MH on unidentified sojourn blocks diverges (Gate never idles ⇒
+  idle-mean random-walks to nonsense), and mixture components label-drift on
+  long histories. Fixes are standard (tethering priors; component ordering)
+  and are the open PGAS items.
+
 *2026-09-01 (price layer + first-pass event study)*:
 
 - Free daily price series secured at zero cost: **UK SAP** (PUBOB603 — the

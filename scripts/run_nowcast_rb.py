@@ -24,7 +24,8 @@ spec.loader.exec_module(rn)
 
 
 def run_terminal_rb(name: str, p: pd.DataFrame, horizons: list[str],
-                    rels: dict | None = None) -> pd.DataFrame:
+                    rels: dict | None = None,
+                    overrides: dict | None = None) -> pd.DataFrame:
     p = p[p.s_truth.notna()].copy()
     if len(p) < 200:
         return pd.DataFrame()
@@ -33,6 +34,7 @@ def run_terminal_rb(name: str, p: pd.DataFrame, horizons: list[str],
         name, fit.s_truth.to_numpy(float),
         i_max=float(np.nanmax(p.inv_gwh) * 1.15 + 100) if p.inv_gwh.notna().any() else 4000.0,
         arrivals=fit.arrival_gwh.to_numpy(float) if "arrival_gwh" in fit else None,
+        **(overrides or {}),
     )
     print(f"{name}: idle D~NB({model.idle_mean:.1f},{model.idle_var:.0f}) "
           f"active D~NB({model.active_mean:.1f},{model.active_var:.0f}) "

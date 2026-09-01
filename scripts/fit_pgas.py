@@ -20,7 +20,7 @@ from lng_nowcast.pgas import Theta, run_pgas
 FIT_END = "2024-06-01"
 
 
-def series(terminal: str) -> np.ndarray:
+def series(terminal: str, end: str = FIT_END) -> np.ndarray:
     if terminal in ("grain", "south_hook", "dragon"):
         ng = pd.read_csv(config.RAW_DIR / "nationalgas_daily.csv")
         ng = ng[(ng.metric == "send_out") & (ng.maturity == "D+1") & (ng.terminal == terminal)]
@@ -31,7 +31,7 @@ def series(terminal: str) -> np.ndarray:
         d = d[(d.indicator == "Physical Flow") & (d.terminal == terminal)]
         s = (d.assign(g=pd.to_numeric(d.value_kwh, errors="coerce") / 1e6)
                .groupby("gas_day")["g"].sum())
-    return s[s.index < FIT_END].dropna().to_numpy(float)
+    return s[s.index < end].dropna().to_numpy(float)
 
 
 def main() -> int:
