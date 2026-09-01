@@ -54,6 +54,34 @@ def main() -> int:
     print("\n=== berth-box occupancy by terminal (all vessels, box-tuning view) ===")
     print(occ.to_string())
 
+    # draught-delta inversion: the moment any carrier is seen with two
+    # different draughts around a berth call, rederive the implied cargo and
+    # place it against the mass-balance arrival — the original plan-document
+    # idea, kept as a cross-check (±~38% honest error after ballast
+    # compensation) because mass balance measures the same thing to ~1%.
+    from lng_nowcast import physics
+    dd = df.dropna(subset=["draught_m"]).sort_values("snap")
+    printed = False
+    for mmsi, g in dd.groupby("mmsi"):
+        draughts = g.draught_m.round(1).drop_duplicates()
+        if len(draughts) < 2 or not g.likely_lng_carrier.max():
+            continue
+        loa = g.loa.dropna().iloc[-1] if g.loa.notna().any() else 290.0
+        beam = g.beam.dropna().iloc[-1] if g.beam.notna().any() else 46.0
+        delta = float(draughts.iloc[0] - draughts.iloc[-1])
+        if abs(delta) < 0.5:
+            continue
+        e, half = physics.draught_delta_to_energy(loa, beam, abs(delta))
+        kind = "discharge" if delta > 0 else "loading/ballasting"
+        nm = g.name.dropna().iloc[-1] if g.name.notna().any() else mmsi
+        if not printed:
+            print("\n=== draught-delta inversions (cross-check vs mass balance) ===")
+            printed = True
+        print(f"  {nm}: {draughts.iloc[0]} → {draughts.iloc[-1]} m ({kind}) "
+              f"⇒ {e:.0f} ± {half:.0f} GWh implied")
+    if not printed:
+        print("\n=== draught-delta inversions: no draught changes captured yet ===")
+
     # anchorage watch: likely carriers in capture (not berth) boxes
     anchored = df[(df.likely_lng_carrier == True) & (df.at_berth != True)]
     if len(anchored):
