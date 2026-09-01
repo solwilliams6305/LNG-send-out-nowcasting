@@ -79,6 +79,29 @@ all-versions pull — 17,628 published versions, 2024→today)*:
   day's D+1 also published 3 days late. This is why the filter carries
   heavy-tailed observation errors and three-way triangulation.
 
+*2026-09-02 (AIS live — first listens)*:
+
+- The stream works (233 vessels heard in 3 minutes across the capture boxes),
+  and one placement validated itself instantly: **Energos Igloo — the Eemshaven
+  FSRU itself — sits in the Eems berth box**. FSRUs are permanently-moored
+  infrastructure and must never be counted as arrivals.
+- **My registry coordinates were off by 2–9 km** at half the terminals
+  (Wilhelmshaven's box missed the FSRU jetty entirely). Fixed by re-centring
+  every berth box on the ALSI-published facility coordinates — which even the
+  frozen UK datasets still carry (South Hook: 51.7210, −5.0809). Dragon alone
+  stays provisional (no ALSI entry).
+- **aisstream coverage is real but patchy**: Rotterdam, the Elbe, and the
+  Medway were rich; Milford Haven, Dunkerque and Mukran delivered *zero*
+  messages even at port scale (~01:00 UTC). Terrestrial community receivers,
+  not satellites — treat AIS silence as "no coverage", never "no ship", and
+  lean on National Gas inflows for UK arrivals regardless.
+- The stream drops connections periodically ("no close frame received or
+  sent") — the listener now reconnects through drops and always returns
+  partial data.
+- First live carrier catches: LNGSHIPS EMPRESS at the Medway anchorage off
+  Grain; an unconfirmed candidate (GUYANA PR0SPERITY, no static yet) inside
+  Gate's berth box.
+
 *2026-09-02 (AIS layer design)*:
 
 - Berth calls last many hours and AIS draught persists after departure, so the

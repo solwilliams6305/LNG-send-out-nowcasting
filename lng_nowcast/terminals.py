@@ -9,8 +9,10 @@ ALSI facilities are NOT hardcoded: EIC codes are resolved at runtime from
 /api/about?show=listing (needs the free key) by name pattern — see
 scripts/bootstrap_alsi.py — because GIE warns that EICs change over time.
 
-Coordinates are approximate terminal locations for seeding AIS berth polygons in
-weeks 3-4. Verify each against observed ship tracks before using in anger.
+Coordinates are the ALSI-published facility positions (pulled 2026-09-02; the
+frozen GB datasets still carry them for Grain and South Hook), so they mark the
+actual jetties. Dragon has no ALSI entry — its berth box in ais.py stays
+provisional until a carrier is observed there.
 """
 
 from __future__ import annotations
@@ -49,8 +51,8 @@ TERMINALS: tuple[Terminal, ...] = (
         tier="core",
         entsog=(PointDirection("NL-TSO-0001", "LNG-00027"),),
         alsi_name_patterns=("gate",),
-        approx_lat=51.955,
-        approx_lon=4.062,
+        approx_lat=51.9737,
+        approx_lon=4.0728,
         notes="GTS reports next morning ~09:20 CET; hourly flows ~2h behind real time.",
     ),
     Terminal(
@@ -60,8 +62,8 @@ TERMINALS: tuple[Terminal, ...] = (
         tier="core",
         entsog=(PointDirection("NL-TSO-0001", "LNG-00068"),),
         alsi_name_patterns=("eems",),
-        approx_lat=53.452,
-        approx_lon=6.875,
+        approx_lat=53.4448,
+        approx_lon=6.8473,
     ),
     Terminal(
         slug="zeebrugge",
@@ -70,8 +72,8 @@ TERMINALS: tuple[Terminal, ...] = (
         tier="core",
         entsog=(PointDirection("BE-TSO-0001", "LNG-00017"),),
         alsi_name_patterns=("zeebrugge",),
-        approx_lat=51.348,
-        approx_lon=3.183,
+        approx_lat=51.3529,
+        approx_lon=3.1819,
         notes="Also has an exit direction (reload/transshipment); entry = regas send-out.",
     ),
     Terminal(
@@ -81,8 +83,8 @@ TERMINALS: tuple[Terminal, ...] = (
         tier="core",
         entsog=(PointDirection("FR-TSO-0003", "LNG-00003"),),
         alsi_name_patterns=("dunkerque",),
-        approx_lat=51.016,
-        approx_lon=2.155,
+        approx_lat=51.0395,
+        approx_lon=2.187,
     ),
     Terminal(
         slug="grain",
@@ -91,8 +93,8 @@ TERMINALS: tuple[Terminal, ...] = (
         tier="core",
         entsog=(PointDirection("UK-TSO-0001", "LNG-00008"),),
         alsi_name_patterns=("grain",),
-        approx_lat=51.443,
-        approx_lon=0.713,
+        approx_lat=51.4518,
+        approx_lon=0.6816,
         notes=(
             "UK ENTSOG rows are backfilled with ~6-day lag (verified 2026-09-01); "
             "ALSI's GB datasets are pure status-N since at least 2024 (UK LSOs no "
@@ -107,8 +109,8 @@ TERMINALS: tuple[Terminal, ...] = (
         tier="core",
         entsog=(PointDirection("UK-TSO-0001", "LNG-00049"),),
         alsi_name_patterns=("south hook", "dragon"),
-        approx_lat=51.705,
-        approx_lon=-5.105,
+        approx_lat=51.721,
+        approx_lon=-5.0809,
         notes=(
             "One grid point nominally covering two ALSI facilities, but Dragon is "
             "absent from ALSI entirely and South Hook is pure status-N since >= 2024 "
@@ -122,8 +124,8 @@ TERMINALS: tuple[Terminal, ...] = (
         tier="secondary",
         entsog=(PointDirection("FR-TSO-0003", "LNG-00024"),),
         alsi_name_patterns=("montoir",),
-        approx_lat=47.315,
-        approx_lon=-2.145,
+        approx_lat=47.3034,
+        approx_lon=-2.1368,
         notes="Atlantic coast — outside the NW-core price story but same machinery.",
     ),
     Terminal(
@@ -133,8 +135,8 @@ TERMINALS: tuple[Terminal, ...] = (
         tier="secondary",
         entsog=(PointDirection("FR-TSO-0003", "LNG-00071"),),
         alsi_name_patterns=("havre",),
-        approx_lat=49.470,
-        approx_lon=0.140,
+        approx_lat=49.4792,
+        approx_lon=0.0907,
         notes="Reported to ALSI until 2026-01-21, status-N since (FSRU idle?); ENTSOG point still live.",
     ),
     Terminal(
@@ -144,8 +146,8 @@ TERMINALS: tuple[Terminal, ...] = (
         tier="secondary",
         entsog=(PointDirection("DE-TSO-0009", "LNG-00083"),),
         alsi_name_patterns=("wilhelmshaven",),
-        approx_lat=53.600,
-        approx_lon=8.110,
+        approx_lat=53.5238,
+        approx_lon=8.1532,
         notes="Data under this OGE pairing starts ~Apr 2025; earlier flows may sit under another point key.",
     ),
     Terminal(
@@ -155,8 +157,8 @@ TERMINALS: tuple[Terminal, ...] = (
         tier="secondary",
         entsog=(PointDirection("DE-TSO-0005", "LNG-00060"),),
         alsi_name_patterns=("brunsb",),
-        approx_lat=53.890,
-        approx_lon=9.120,
+        approx_lat=53.8873,
+        approx_lon=9.172,
     ),
     Terminal(
         slug="stade",
@@ -165,8 +167,8 @@ TERMINALS: tuple[Terminal, ...] = (
         tier="secondary",
         entsog=(PointDirection("DE-TSO-0005", "LNG-00078"),),
         alsi_name_patterns=("stade",),
-        approx_lat=53.630,
-        approx_lon=9.530,
+        approx_lat=53.6556,
+        approx_lon=9.5199,
         notes="Zero rows in 2024-2026 backfill (FSRU never properly commissioned) — kept for completeness.",
     ),
     Terminal(
@@ -179,8 +181,8 @@ TERMINALS: tuple[Terminal, ...] = (
             PointDirection("DE-TSO-0018", "LNG-00079"),
         ),
         alsi_name_patterns=("mukran", "regas", "baltic"),
-        approx_lat=54.480,
-        approx_lon=13.590,
+        approx_lat=54.4802,
+        approx_lon=13.5934,
         notes="Two TSO rows (GASCADE + Fluxys Deutschland) for one point — sum them.",
     ),
 )

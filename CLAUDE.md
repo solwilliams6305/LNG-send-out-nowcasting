@@ -50,15 +50,17 @@ system; keep the honest-caveats section of README.md intact.
   at the same UTC instant year-round, so gas_day labels align with ENTSOG.
   Intraday TODO: /api/gas-system-status-data POST payload undiscovered.
 - AIS (lng_nowcast/ais.py): aisstream.io websocket, key AISSTREAM_KEY,
-  subscribe within 3 s, [lat, lon] corner order, max 3 connections. Two-tier
-  geometry: wide capture boxes (subscription) + tight berth boxes (at_berth
-  flag); Milford Haven has south_hook/dragon sub-boxes — ALL berth coords
-  PROVISIONAL until checked against observed tracks (scripts/ais_logger.py
-  prints berthed vessels; ALSI rows carry exact facility lat/lon for EU
-  refinement). Cargo inversion in physics.py: capacity-class primary,
-  draught-delta secondary (ballast compensation ~60% — draught understates
-  cargo). Offline test: scripts/selftest_ais.py. Snapshot runs listen ~480 s
-  when the key exists (--ais-window to change).
+  subscribe within 3 s, [lat, lon] corner order, max 3 connections; the server
+  drops connections periodically — the listener reconnects and returns partial
+  data. Berth boxes are centred on ALSI facility coordinates (verified live
+  2026-09-02; registry coords were 2-9 km off before); Dragon's box alone is
+  provisional. Coverage is patchy by area/time (Milford Haven, Dunkerque,
+  Mukran silent at first listen; Rotterdam/Elbe/Medway rich) — AIS silence
+  means "no receiver", not "no ship". FSRUs (e.g. Energos Igloo at eems) sit
+  permanently in berth boxes — infrastructure, not arrivals. Cargo inversion
+  in physics.py: capacity-class primary, draught-delta secondary (ballast
+  compensation ~60%). Offline test: scripts/selftest_ais.py. Snapshot runs
+  listen ~480 s when the key exists (--ais-window to change).
 - UK revision structure (quantified 2026-09-02, scripts/revision_report_uk.py):
   D+2 items republished ~30d later usually unchanged (median Δ=0); "M+15"
   items publish at ~M+1 and NEVER differ from final D+2 — drop them from

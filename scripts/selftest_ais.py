@@ -16,15 +16,15 @@ def approx(x, target, rel):
 
 
 def main() -> int:
-    # --- geometry: Gate berth box contains Gate; boxes don't cross-claim ---
-    term, sub, in_berth = ais.locate(51.955, 4.062)
+    # --- geometry: Gate berth box contains the Gate jetty; no cross-claims ---
+    term, sub, in_berth = ais.locate(51.9737, 4.0728)
     assert (term, sub, in_berth) == ("gate", "gate", True), (term, sub, in_berth)
-    term, sub, in_berth = ais.locate(51.7075, -5.113)
+    term, sub, in_berth = ais.locate(51.7210, -5.0809)
     assert (term, sub, in_berth) == ("milford_haven", "south_hook", True)
     term, sub, in_berth = ais.locate(51.700, -4.992)
     assert (term, sub, in_berth) == ("milford_haven", "dragon", True)
-    term, sub, in_berth = ais.locate(51.74, -5.05)  # mid-waterway: capture only
-    assert term == "milford_haven" and not in_berth
+    term, sub, in_berth = ais.locate(51.70, -5.03)  # mid-waterway: capture only
+    assert term == "milford_haven" and not in_berth, ais.locate(51.70, -5.03)
     assert ais.locate(48.0, 2.0) == (None, None, False)  # Paris is not a berth
     assert len(ais.subscription("k")["BoundingBoxes"]) == len(ais.CAPTURE_BOXES)
 
@@ -32,7 +32,7 @@ def main() -> int:
     static = {
         "MessageType": "ShipStaticData",
         "MetaData": {"MMSI": 229929000, "ShipName": "TEST CARRIER",
-                     "latitude": 51.955, "longitude": 4.061, "time_utc": "t0"},
+                     "latitude": 51.9737, "longitude": 4.0728, "time_utc": "t0"},
         "Message": {"ShipStaticData": {
             "Name": "TEST CARRIER", "ImoNumber": 9700001, "Type": 84,
             "Dimension": {"A": 250, "B": 45, "C": 20, "D": 26},
@@ -42,8 +42,8 @@ def main() -> int:
     pos = {
         "MessageType": "PositionReport",
         "MetaData": {"MMSI": 229929000, "ShipName": "TEST CARRIER",
-                     "latitude": 51.955, "longitude": 4.061, "time_utc": "t1"},
-        "Message": {"PositionReport": {"Latitude": 51.9552, "Longitude": 4.0615,
+                     "latitude": 51.9737, "longitude": 4.0728, "time_utc": "t1"},
+        "Message": {"PositionReport": {"Latitude": 51.9739, "Longitude": 4.0731,
                                        "Sog": 0.1, "NavigationalStatus": 5}},
     }
     v = ais.VesselState(229929000)
@@ -61,7 +61,7 @@ def main() -> int:
     v2 = ais.VesselState(2)
     v2.update({"kind": "static", "mmsi": 2, "loa": 120.0, "beam": 20.0,
                "ship_type": 60, "time_utc": "t0"})
-    v2.update({"kind": "position", "mmsi": 2, "lat": 51.955, "lon": 4.061,
+    v2.update({"kind": "position", "mmsi": 2, "lat": 51.9737, "lon": 4.0728,
                "sog": 14.0, "nav_status": 0, "time_utc": "t1"})
     row2 = v2.row("s")
     assert not row2["at_berth"] and not row2["likely_lng_carrier"]

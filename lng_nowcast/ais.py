@@ -13,10 +13,18 @@ berth occupancy + static state well enough for daily arrival detection; a
 continuous local logger (scripts/ais_logger.py) adds density when running.
 
 Geometry is two-tier per terminal: a wide CAPTURE box (subscription + logging,
-~±5 km) and a tight BERTH box (the at-berth flag, ~±1-2 km). Berth coordinates
-are PROVISIONAL, seeded from the terminal registry — verify against observed
-tracks before trusting arrival attribution (especially Milford Haven, where
-South Hook and Dragon share one waterway and get separate berth sub-boxes).
+~±5 km) and a tight BERTH box (the at-berth flag, ~±1.1 km) centred on the
+ALSI-published jetty coordinates (Dragon provisional — no ALSI entry). FSRU
+terminals' own permanently-moored units (e.g. Energos Igloo at Eemshaven) show
+up perpetually at berth: treat vessels berthed across many snapshots as
+infrastructure, not arrivals.
+
+Coverage caveat (first live listens, 2026-09-02, ~01:00 UTC): aisstream's
+community receiver network delivered nothing around Milford Haven, Dunkerque,
+or Mukran while Rotterdam/Elbe/Grain were rich — terrestrial coverage is
+area- and time-dependent. Track per-terminal message counts across snapshots
+before concluding anything from AIS silence; UK arrivals fall back on National
+Gas inflow data regardless.
 """
 
 from __future__ import annotations
@@ -58,17 +66,18 @@ CAPTURE_BOXES: tuple[BerthBox, ...] = tuple(
     _box(t.slug, "", t.approx_lat, t.approx_lon, 0.05, 0.08) for t in TERMINALS
 )
 
-# Tight berth boxes; Milford Haven splits into its two jetties (PROVISIONAL
-# coordinates — refine from observed berthed positions).
+# Tight berth boxes (~±1.1 km) around the ALSI-published jetty coordinates.
+# Milford Haven splits into its two jetties: south_hook uses the ALSI position;
+# dragon stays PROVISIONAL (no ALSI entry) until a carrier is observed there.
 BERTH_BOXES: tuple[BerthBox, ...] = tuple(
     [
-        _box(t.slug, "", t.approx_lat, t.approx_lon, 0.018, 0.028)
+        _box(t.slug, "", t.approx_lat, t.approx_lon, 0.010, 0.016)
         for t in TERMINALS
         if t.slug != "milford_haven"
     ]
     + [
-        _box("milford_haven", "south_hook", 51.7075, -5.1130, 0.012, 0.020),
-        _box("milford_haven", "dragon", 51.7000, -4.9920, 0.012, 0.020),
+        _box("milford_haven", "south_hook", 51.7210, -5.0809, 0.010, 0.016),
+        _box("milford_haven", "dragon", 51.7000, -4.9920, 0.010, 0.016),
     ]
 )
 
@@ -216,32 +225,49 @@ async def _listen_async(
     duration_s: float | None,
     raw_sink=None,
 ) -> dict[int, VesselState]:
+    """Collect vessel state until the deadline, reconnecting through the
+    periodic server-side drops aisstream is known for ("no close frame
+    received or sent"). Partial data is always returned; only a protocol-level
+    error payload (e.g. bad key) raises."""
     import websockets  # imported lazily so the package works without it installed
 
     vessels: dict[int, VesselState] = {}
-    deadline = None if duration_s is None else asyncio.get_event_loop().time() + duration_s
-    async with websockets.connect(STREAM_URL, ping_interval=20, close_timeout=5) as ws:
-        await ws.send(json.dumps(subscription(api_key)))
-        while True:
-            timeout = None if deadline is None else max(0.1, deadline - asyncio.get_event_loop().time())
-            if deadline is not None and timeout <= 0.11:
-                break
-            try:
-                msg = await asyncio.wait_for(ws.recv(), timeout=timeout)
-            except asyncio.TimeoutError:
-                break
-            try:
-                raw = json.loads(msg)
-            except (json.JSONDecodeError, TypeError):
-                continue
-            if isinstance(raw, dict) and raw.get("error"):
-                raise RuntimeError(f"aisstream error: {raw['error']}")
-            rec = normalize(raw) if isinstance(raw, dict) else None
-            if rec is None:
-                continue
-            if raw_sink is not None:
-                raw_sink(raw)
-            vessels.setdefault(rec["mmsi"], VesselState(rec["mmsi"])).update(rec)
+    loop = asyncio.get_event_loop()
+    deadline = None if duration_s is None else loop.time() + duration_s
+
+    while deadline is None or deadline - loop.time() > 1:
+        try:
+            async with websockets.connect(
+                STREAM_URL, ping_interval=20, close_timeout=5, open_timeout=30
+            ) as ws:
+                await ws.send(json.dumps(subscription(api_key)))
+                while True:
+                    timeout = None if deadline is None else max(0.1, deadline - loop.time())
+                    if deadline is not None and timeout <= 0.11:
+                        return vessels
+                    try:
+                        msg = await asyncio.wait_for(ws.recv(), timeout=timeout)
+                    except asyncio.TimeoutError:
+                        return vessels
+                    try:
+                        raw = json.loads(msg)
+                    except (json.JSONDecodeError, TypeError):
+                        continue
+                    if isinstance(raw, dict) and raw.get("error"):
+                        raise RuntimeError(f"aisstream error: {raw['error']}")
+                    rec = normalize(raw) if isinstance(raw, dict) else None
+                    if rec is None:
+                        continue
+                    if raw_sink is not None:
+                        raw_sink(raw)
+                    vessels.setdefault(rec["mmsi"], VesselState(rec["mmsi"])).update(rec)
+        except RuntimeError:
+            raise
+        except Exception:
+            # Dropped connection / handshake hiccup: reconnect if time remains.
+            if deadline is not None and deadline - loop.time() <= 5:
+                return vessels
+            await asyncio.sleep(3)
     return vessels
 
 
