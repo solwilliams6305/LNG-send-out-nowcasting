@@ -8,3 +8,4 @@ snapshot_utc,entsog_rows,entsog_hourly_rows,alsi_rows,alsi_key_present,errors
 2026-09-01T11:36:34+00:00,81,0,30,71,280,True,True,
 2026-09-01T13:59:43+00:00,64,0,15,46,624,0,True,True,
 2026-09-01T15:26:28+00:00,1087,148,660,1194,708,311,True,True,
+2026-09-01T21:21:41+00:00,1091,162,675,1194,1056,322,True,True,
