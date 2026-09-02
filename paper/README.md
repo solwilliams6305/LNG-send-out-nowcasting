@@ -1,8 +1,11 @@
 # Paper
 
-`main.tex` is a skeleton: structure, tables and claims are in place with the
-project's real numbers; every red `[TODO-SOLOMON]` marker is prose or
-derivation to be written by Solomon in his own voice. Figures to generate:
-sendout_overview.png (exists), arrival_sizes.png (exists), a nowcast-vs-truth
-band plot, the fBm kernel-fit figure, the cover-index timeline. Each table
-cites its generating script in the repo.
+`main.tex` is a complete draft (9 pp): all results, tables, and figures are
+final from the repo's pipelines; the one remaining `[pin commit]` marker is
+filled at submission. Figures regenerate via `scripts/paper_figures.py`;
+every table cites its generating script.
+
+Before submission, Solomon should read the draft end-to-end and rework any
+passage he could not defend unaided — the model section (semi-Markov
+structure, marginalized filter, fractional bridge, PGAS) is the part an
+interviewer or referee will probe.

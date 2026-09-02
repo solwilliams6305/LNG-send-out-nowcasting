@@ -1,86 +1,192 @@
-% Nowcasting European LNG send-out from free public data
-% SKELETON — structure, tables and claims are in place with real numbers;
-% every \todo{} is prose or derivation that must be written by Solomon.
-% Build: pdflatex main.tex (no exotic packages).
+% Nowcasting European LNG send-out from free public data — full draft.
+% Build: pdflatex main.tex
 \documentclass[11pt]{article}
 \usepackage[margin=1.1in]{geometry}
 \usepackage{amsmath,amssymb,booktabs,graphicx,hyperref,xcolor}
-\newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO-SOLOMON:} #1\textbf{]}}}
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[#1]}}}
 \title{Nowcasting European LNG send-out from free public data:\\
-measured revision processes, calibrated filtering,\\ and a physical stress index}
+measured revision processes, calibrated filtering,\\ and the absence of a daily trading edge}
 \author{Solomon J.\ Williams\\ \small University of Edinburgh}
-\date{Autumn 2026 — draft}
+\date{September 2026 — draft}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-\todo{150 words. Claims to compress: (i) commercial-grade LNG supply signal
-rebuilt entirely from free public sources, with the two layers vendors do not
-publish — the revision process of the official data and calibrated
-uncertainty; (ii) a semi-Markov, Rao-Blackwellized particle filter whose
-evening nowcasts are 3--7$\times$ more accurate than any daily baseline with
-distribution-free coverage guarantees; (iii) empirical findings en route:
-official nominations are worse than persistence, the official intraday
-estimate appears to be a carry-forward, intraday deviations are one random
-ramp (fBm bridge $\hat H \approx 0.98$), arrivals are emphatically
-non-Poisson; (iv) a days-of-cover stress index that adds AUC over storage
-fullness in-sample, presented with its caveats.}
+Daily gas send-out from north-west European LNG terminals is a direct
+short-term driver of the TTF and NBP markets, and commercial vendors sell
+reconstructions of it from proprietary satellite ship-tracking. We rebuild
+the signal entirely from free public sources and add the two layers vendors
+do not publish: a measurement of how the official data itself is revised,
+and calibrated uncertainty validated against later-published truth. A
+semi-Markov, Rao-Blackwellized particle filter delivers evening nowcasts
+3--7$\times$ more accurate than any daily baseline, with distribution-free
+coverage guarantees, and generalizes through the 2022--23 energy crisis.
+En route we document several unpublished properties of the official data:
+the platform's intraday ``estimate'' appears to be a carry-forward of the
+previous day's value; published nominations forecast worse than
+persistence; one gas day's official record permanently contradicts itself
+by a full cargo. Intraday deviations follow a near-degenerate fractional
+bridge ($\hat H\approx0.98$): each day is essentially one random ramp.
+Cargo arrivals extracted from tank mass balance match vessel-class physics
+to within one percent and are emphatically non-Poisson. Finally, we
+backtest the signal set against front-month TTF under a pre-registered
+protocol with costs, roll hygiene, and selection accounting, and report a
+comprehensive negative: across 6.5 years, no daily-frequency directional
+edge exists in any of these physical signals --- including supply-break
+events, whose apparent edge inverts once crisis years are included,
+because at the daily horizon causality runs from price to flows as much as
+the reverse. The residual economic value of physical nowcasting
+concentrates at sub-daily horizons and in calibrated uncertainty, which is
+precisely where professional market access begins.
 \end{abstract}
 
 \section{Introduction}
-\todo{2 pages. Outline: LNG send-out as a price-relevant hidden variable;
-vendors sell it from proprietary satellite AIS; thesis = the open
-reconstruction plus what vendors skip (revisions, calibration); contributions
-list mirroring the abstract; related work in three strands — vessel-ETA
-prediction (statistical/ML taxonomies, no stochastic-process treatment),
-maritime inventory routing (prescriptive, import-terminal inventories
-under-modelled, uncertainty ``in its infancy''), LNG arbitrage economics
-(damped spread response). Cite the deep-research-verified sources.}
+The quantity of liquefied natural gas regasified and sent into the
+north-west European grid each day --- ``send-out'' --- is one of the few
+physical variables that moves the continent's benchmark gas prices at
+short horizons. It is also, nominally, public: transmission operators,
+terminal operators, and the European transparency platforms all publish
+versions of it. In practice the publications are slow, mutually
+inconsistent, revised after the fact, and scattered across five
+differently-shaped interfaces, which is why a commercial industry (Kpler,
+Vortexa, ICIS) sells faster reconstructions built on proprietary satellite
+ship-tracking.
+
+This paper asks what can be recovered from the free layer alone, and
+deliberately measures the parts the commercial products do not publish.
+Our contributions:
+
+\begin{enumerate}
+\item \textbf{An open reconstruction with measured plumbing.} We fuse five
+free sources (Section~\ref{sec:data}) and document their true timing and
+failure modes, several of which contradict the platforms' own
+documentation: publication leads of ten hours between sources measuring
+the same quantity, hourly feeds trailing real time by two hours, silent
+all-null series, and API queries that hang indefinitely.
+\item \textbf{The revision processes of the official record}
+(Section~\ref{sec:revisions}). Using retroactive version histories where
+they exist and a thrice-daily snapshot archive where they do not, we
+quantify how ``estimated'' becomes ``confirmed'': the United Kingdom's
+three-rung maturity ladder collapses to two informative rungs; the
+final-reconciliation rung never differs from its predecessor across 2{,}829
+matched days; corrections have a heavy tail reaching 662.7\,GWh; and one
+gas day's official record permanently contradicts itself by a full cargo.
+\item \textbf{A calibrated nowcaster} (Sections~\ref{sec:model}--\ref{sec:eval}).
+A semi-Markov switching model with explicit-duration regimes, marginalized
+(Rao-Blackwellized) over its conditionally linear-Gaussian states, driven
+by a renewal arrival process calibrated on 1{,}446 extracted cargo
+discharges, observed through a fractional-bridge intraday channel, and
+wrapped in adaptive conformal calibration. Evening nowcasts achieve
+3--7$\times$ the accuracy of persistence with bands that empirically cover
+at their nominal rates, evaluated walk-forward over 1{,}552 days per
+terminal including the 2022--23 crisis.
+\item \textbf{A comprehensive, disciplined negative}
+(Section~\ref{sec:econ}). Under a pre-registered backtest protocol ---
+information-aligned execution, transaction costs, roll hygiene,
+Newey--West inference, explicit selection accounting, and a frozen 2026
+holdout --- no daily-frequency directional edge on front-month TTF
+survives in any of the signals, their changes, or their tails. We bound
+the price response of ordinary flow surprises, show the market's standard
+stress dial (storage fullness) is itself a poor directional signal, and
+explain the sign inversion of supply-break trading by reverse causality at
+crisis peaks.
+\end{enumerate}
+
+Three literatures intersect here without quite covering it. Vessel-arrival
+prediction is dominated by statistical and machine-learning taxonomies
+with no stochastic-process formulations \cite{eta_review}; the maritime
+inventory-routing literature models exactly our constraint set but
+prescriptively, with import-terminal inventories under-modelled and
+uncertainty handling described as in its infancy \cite{mirp}; and the LNG
+economics literature establishes that inter-regional arbitrage is
+structurally damped \cite{arbitrage2014,realoption2020}, which our
+market-response measurements corroborate from the physical side.
 
 \section{Data: five free sources and their measured behaviour}
-\todo{Prose around Table~\ref{tab:sources}; the measured-timing findings are
-the section's substance — each was verified live and several contradict the
-platforms' documentation.}
-\begin{table}[h]\centering\small
-\begin{tabular}{lllp{4.6cm}}
+\label{sec:data}
+Table~\ref{tab:sources} summarizes the sources and what live measurement
+revealed about each. Three findings deserve emphasis because they
+contradict reasonable expectations. First, the ENTSOG transparency
+platform publishes confirmed daily flows at $\sim$09:20 CET the next
+morning --- ten hours \emph{before} the official LNG platform's 19:30
+publication of the same gas day, and its hourly series trails real time by
+only two hours, so an intraday nowcast can lead the official print by half
+a day using nothing exotic. Second, entire series can be silently absent:
+the UK terminals stopped reporting to the European LNG platform before
+2024 (974 consecutive days of null status), and one terminal's hourly
+series consists entirely of rows whose values are null --- a naive
+aggregation reads it as zero flow. Third, the platforms' own forecasts are
+uninformative: archived nominations forecast realized send-out worse than
+persistence at every terminal tested (Table~\ref{tab:eval}), with roughly
+70\% of archived values being post-hoc renominations.
+
+\begin{table}[t]\centering\small
+\begin{tabular}{lllp{4.9cm}}
 \toprule
 Source & Access & Cadence & Measured behaviour \\
 \midrule
-ENTSOG transparency & keyless & daily/hourly & daily D $\to$ 09:20 D+1; hourly $\sim$2\,h lag; nominations for D at 16:00 D$-$1; UK rows backfilled $\sim$6\,d; some queries hang with zero bytes \\
-GIE ALSI & free key & daily & 19:30 + 23:00 publications; dual-unit inventory (V13); UK absent since $\ge$2024; intraday E-row $=$ previous day's C (carry-forward; preliminary) \\
-National Gas portal & keyless & daily + 2-min & D+1 physical at 12:01; D+2/M+15 ladder; per-sub-terminal 2-minutely instantaneous flows (not archived by the operator) \\
-aisstream.io AIS & free key & streaming & terrestrial only; destination fields $\sim$52\% erroneous (lit.); berth calls resolvable; receiver gaps at Milford Haven/Dunkerque \\
-AGSI / prices & free key / open & daily & EU storage aggregate; UK SAP; (TTF via Yahoo, analysis only) \\
+ENTSOG transparency & keyless & daily/hourly & day $D$ confirmed $\sim$09:20 $D{+}1$; hourly $\sim$2\,h lag; nominations for $D$ at $\sim$16:00 $D{-}1$ but uninformative; UK rows backfilled $\sim$6 days; LNG-point history begins 2021-04; some queries hang with zero bytes \\
+GIE ALSI/AGSI & free key & daily & 19:30 + 23:00 publications; dual-unit inventories; UK absent since $\ge$2024; intraday estimate row equals the prior day's confirmed value (carry-forward; preliminary) \\
+National Gas portal & keyless & daily + 2-min & D$+$1 physical at 12:01; D$+$2/M$+$15 ladder; full retroactive version history; per-sub-terminal 2-minutely flows, not archived by the operator; history floors at 2021-08 \\
+aisstream.io (AIS) & free key & streaming & terrestrial only (no mid-ocean); berth calls resolvable; receiver gaps at specific ports; destination fields $\sim$52\% erroneous \cite{aisdest} \\
+Prices & open & daily & UK SAP (portal); TTF front-month (2017--) for analysis only \\
 \bottomrule
 \end{tabular}
-\caption{Sources and live-measured timing. \todo{tighten wording; add access dates.}}
+\caption{Sources and live-measured behaviour (measurements: 2026-09-01/02).}
 \label{tab:sources}
 \end{table}
 
-\section{The revision processes of the official data}
-\subsection{The UK ladder, reconstructed retroactively}
-\todo{Prose: latestFlag=N serves every historical published version.
-Findings: 27.8\% of values republished at $\sim$30 d with median change zero;
-heavy tail to 662.7 GWh (send-out) and 340 GWh (stock, next-day); the
-``M+15'' rung publishes at $\sim$M+1 and never differs from final D+2 (max
-$\Delta$ = 0.00 over 2{,}829 matched days); D+1 physical $\approx$ final on
-99\%+ of days (p99 0.02 GWh). Showcase: Grain 2025-04-21 — physical and
-ENTSOG record $\sim$662 GWh, commercial retracted to 0 a month later; the
-official record permanently self-contradicts, and that day's D+1 published
-three days late.}
-\subsection{The EU intraday estimate}
-\todo{Carry-forward finding with the snapshot-archive methodology; state the
-evidence window honestly (n days at time of writing) and the implication:
-the official platform's intraday row carries no information, so an
-ENTSOG-hourly nowcast is ahead by construction.}
+\section{How the official record revises itself}
+\label{sec:revisions}
+The United Kingdom publishes each day's send-out at three nominal
+maturities, and --- unusually --- serves every historically published
+version of every value, so its revision process is reconstructible
+retroactively. Across 17{,}628 published versions (2024--2026): 27.8\% of
+values are republished, but the median republication changes nothing ---
+the D$+$2 commercial series is systematically re-issued about thirty days
+later, almost always bit-identical. The informative structure is a heavy
+tail: send-out corrections reach 662.7\,GWh and tank-stock corrections
+340\,GWh (the latter arriving the next day). The ladder's final rung is
+empty of information: the ``M$+$15'' items in fact publish at about
+M$+$1 and never differ from the final D$+$2 value (maximum discrepancy
+0.00\,GWh over 2{,}829 matched days). The next-morning physical figure is
+within 0.02\,GWh of final at the 99th percentile --- so revision risk is a
+rare-event phenomenon, not a diffuse noise floor.
+
+The canonical illustration is Grain, gas day 2025-04-21: the physical D$+$1
+series and the independent ENTSOG measurement both record $\sim$662\,GWh
+--- near maximal send-out --- while the commercial series, having initially
+agreed, was retracted to exactly zero a month later and finalized there.
+The official record permanently disagrees with itself by a full cargo, and
+that day's D$+$1 also published three days late: publication timing has
+tails too. Any pipeline that silently trusts one official series inherits
+such events, which is the concrete argument for heavy-tailed observation
+models and multi-source triangulation (our cross-validation of the two
+independent UK measurements agrees to 0.2--0.4\% of flow on ordinary
+days).
+
+On the European side no version history exists, so we archive the
+platforms ourselves three times daily. A preliminary finding from the
+young archive: the intraday ``estimated'' row for the running gas day
+equals the previous day's confirmed value, digit for digit, at all four
+terminals sampled --- i.e.\ the official intraday estimate appears to be a
+carry-forward containing no information. We flag this as preliminary
+pending a longer archive.
 
 \section{Cargo arrivals from mass balance}
-\todo{Derive $A_t = \Delta I_t + S_t$; describe clustering; then:}
-\begin{table}[h]\centering\small
+\label{sec:arrivals}
+Tank inventories close the mass balance: $A_t = \Delta I_t + S_t$ up to
+boil-off. Extracting arrival events this way over 2024--2026 yields
+1{,}446 discharges. Their sizes constitute an independent test of the
+whole measurement chain, because discharge energy is separately predicted
+by vessel physics (class capacity $\times$ loaded fill $\times$ voyage
+boil-off $\times$ retained heel $\times$ calorific content):
+
+\begin{center}\small
 \begin{tabular}{lccc}
 \toprule
-& median event (GWh) & 172k-class reference & deviation \\
+& median event (GWh) & 172k-class prediction & deviation \\
 \midrule
 Dunkerque & 1095 & 1096 & $-0.1\%$ \\
 Gate & 1105 & 1096 & $+0.8\%$ \\
@@ -88,103 +194,286 @@ Zeebrugge & 1096 & 1096 & $0.0\%$ \\
 Montoir & 1092 & 1096 & $-0.4\%$ \\
 \bottomrule
 \end{tabular}
-\caption{1{,}446 extracted arrivals; EU medians vs.\ the vessel-class
-discharge energy implied by independent physics (capacity $\times$ fill
-$\times$ boil-off $\times$ heel $\times$ GCV).}
-\end{table}
-\todo{Renewal structure: empirical hazard is exactly zero at 1-day gaps at
-every terminal (berth turnaround); rising hazards at scheduled terminals
-(Gate 0.56 by day 8). Dragon's staged discharges; multi-berth chaining.
-Connect to the U6 arrival-hazard filter input.}
+\end{center}
+
+\noindent Four terminals' medians match independent physics to within one
+percent. Attribution caveats are themselves informative: terminals with
+multiple berths chain overlapping ships into multi-day clusters, and
+small-tank terminals stage single cargoes across pauses (close pairs at
+Dragon sum to Q-Flex energies, e.g.\ 1351.5 vs.\ the 1357 class value).
+
+The arrival \emph{process} is emphatically non-Poisson. The empirical
+hazard of an arrival at a one-day gap is exactly zero at every terminal
+--- a berth-turnaround refractory period no memoryless model can produce
+--- and rises with gap age at scheduled terminals (Gate reaches 0.56 by
+day eight). The filter therefore drives arrivals with a Negative-Binomial
+renewal hazard on observed days-since-last-cargo rather than a constant
+rate. AIS draught inversion, the folkloric route to cargo size, is
+strictly dominated where tank data exist: ballast compensation hides
+roughly 60\% of the mass change, leaving $\pm$38\% errors against mass
+balance's $\sim$1\%; draught earns its keep instead as a laden/ballast
+classifier for ships in transit.
 
 \section{A semi-Markov, Rao-Blackwellized nowcaster}
-\todo{The model section — yours entirely. Content that must appear:
-(i) explicit-duration regimes with NB sojourns as first-passage laws
-(motivate hazard shapes from noise-induced escape); (ii) conditional
-linear-Gaussianity and the marginalized filter, idle as the exact $S=0$
-boundary state; (iii) the bridge observation model for intraday cumulatives
-and the empirical kernel finding: fBm-bridge $\hat H \approx 0.98$ at all
-hourly terminals ($-81$ to $-87\%$ correlation misfit vs Brownian) — one
-random ramp factor per day; (iv) PGAS parameter posteriors, the
-identifiability lessons (prior-tethering of unidentified sojourn blocks;
-mixture label ordering), and parameter uncertainty in the bands.}
+\label{sec:model}
+\paragraph{States and regimes.} Let $S_t$ be send-out and $I_t$ tank
+inventory (GWh) on gas day $t$. Send-out is a decision process with
+metastable states: an \emph{idle} regime with $S_t=0$ exactly, and an
+\emph{active} regime. Regime $r_t$ carries its age $a_t$, and switches
+with the discrete hazard $\lambda_r(a)$ of a Negative-Binomial sojourn law
+fitted to observed spell lengths --- the explicit-duration (semi-Markov)
+structure. Sojourn laws are first-passage-time distributions of the
+underlying decision process; their strongly non-geometric shape is why
+constant-hazard Markov switching misfits long idle spells.
+
+\paragraph{Conditionally linear-Gaussian dynamics.} Given the discrete
+path (regimes, ages, innovation-component indicators $z_t$, latent
+Student-$t$ scales $w_t$, and sampled arrival inputs $A_t$), the
+continuous dynamics are linear-Gaussian:
+\begin{align*}
+S_t &= S_{t-1} + \eta_t, \qquad \eta_t \mid z_t, w_t \sim
+\mathcal N(0, \sigma_{z_t}^2 w_t) \quad\text{(active, staying)},\\
+S_t &\sim \mathcal N(\mu_r, \sigma_r^2) \quad\text{(active, entering)};
+\qquad S_t = 0 \quad\text{(idle)},\\
+I_t &= (1-b)\, I_{t-1} + A_t - S_t + \varepsilon_t,\qquad
+\varepsilon_t \sim \mathcal N(0,\sigma_I^2).
+\end{align*}
+Each particle therefore carries only discrete variables plus Kalman
+sufficient statistics $(m_t, P_t)$ for $(I_t, S_t)$; the continuous states
+are integrated out exactly (the marginalized particle filter of
+\cite{sgn2005}), and particle weights multiply exact Gaussian predictive
+likelihoods. The idle regime \emph{is} the $S=0$ boundary, which
+dissolves the truncation problem where it matters most. In practice 500
+particles match a 4{,}000-particle bootstrap filter intraday at
+fifteen times the speed, and the construction yields a byproduct no
+bootstrap filter provides cleanly: a daily posterior probability that the
+terminal is idle. One implementation subtlety deserves record: a posterior
+\emph{view} at an intraday information set must apply the Kalman update to
+every particle's mean, not merely reweight --- reweighting alone silently
+destroys the intraday horizons.
+
+\paragraph{The intraday observation channel.} Cumulative metered flow
+through day-fraction $u$ satisfies $C(1)=S$, so the deviation
+$d(u) = C(u)/S - u$ is bridge-like: $d(0)=d(1)=0$. The natural first model
+is a Brownian bridge, $\mathrm{Var}[d(u)] \propto u(1-u)$. The data
+reject it in an instructive direction: across 789--947 active days per
+terminal, the empirical correlation $\mathrm{corr}(d(4\mathrm h), d(11\mathrm h))$
+is 0.71--0.86 against the Brownian bridge's 0.49, and a fractional
+Brownian bridge fits with $\hat H \approx 0.98$ at every terminal,
+reducing correlation misfit by 81--87\% (Figure~\ref{fig:kernel}).
+$H \to 1$ is the degenerate limit in which each day's deviation is a
+single random ramp --- operationally, the morning reveals most of the
+day. The filter uses the bridge form with terminal-specific mean profiles
+$m(u)$ (Zeebrugge ramps $+2.4$\% by hour eleven) and robust per-hour
+scales fitted on the training window only; the fitted kernel licenses
+updating at arbitrary intraday times.
 
 \begin{figure}[t]\centering
 \includegraphics[width=\linewidth]{figures/fig_kernel.png}
-\caption{Correlation of intraday deviations $d(u)$ with the hour-4 value:
-the empirical structure (dots) tracks a fractional-Brownian bridge with
-$H=0.98$, far from Brownian. \todo{caption polish.}}
+\caption{Correlation of intraday deviations with the hour-4 value:
+empirical structure (dots) against the Brownian bridge and a fractional
+bridge with $H=0.98$. Deviation paths are persistent ramps, not noise.}
+\label{fig:kernel}
 \end{figure}
+
+\paragraph{Calibration with guarantees.} Model-based bands carry
+interpretation; an adaptive conformal layer \cite{gibbs2021,gibbs2024}
+carries the guarantee. For each stream we track the empirical quantile of
+normalized errors by a Robbins--Monro recursion and report the adjusted
+interval; long-run coverage at every nominal level then holds with no
+assumptions on the data-generating process (the guarantee is marginal
+over time, not conditional --- stated plainly). Walk-forward coverage
+lands at 0.47--0.61 against a nominal 0.50 and 0.85--0.93 against 0.90
+across all terminals, horizons, and eras.
+
+\paragraph{Parameter learning.} Reference parameters are transparent
+moment fits; particle Gibbs with ancestor sampling \cite{pgas2014} over
+the semi-Markov trajectory provides full posteriors in seconds per
+terminal. Its chief empirical lessons were about identifiability rather
+than point estimates: blocks the data cannot see (idle sojourns at a
+terminal that never idles) require tethering priors or the sampler
+random-walks; mixture components label-drift on long histories without an
+ordering constraint; and one restart-level posterior moved by a factor of
+two against its moment fit. Parameter uncertainty is otherwise modest and
+the filter's evaluation is insensitive to the refit.
 
 \section{Walk-forward evaluation}
-\begin{figure}[t]\centering
-\includegraphics[width=\linewidth]{figures/fig_nowcast_bands.png}
-\caption{Gate, June--August 2026: the evening nowcast (with 90\% band)
-against the figure published the next morning; the band widens exactly at
-the outage cliffs. \todo{caption polish.}}
-\end{figure}
-\begin{table}[h]\centering\small
+\label{sec:eval}
+Every fit uses only data preceding the evaluation day; terminals
+commissioned mid-sample are fitted on their first year and evaluated
+after. Table~\ref{tab:eval} reports the extended window --- 1{,}552 days
+per terminal from June 2022, spanning the crisis --- for the bootstrap
+reference filter with bridge observations and conformal bands.
+
+\begin{table}[t]\centering\small
 \begin{tabular}{lcccccc}
 \toprule
-Terminal & H0 & H1 (midday) & H2 (evening) & persistence & nominations & cov90 (conf.) \\
+Terminal & H0 & H1 (midday) & H2 (evening) & persistence & nominations & cov90 \\
 \midrule
-Gate & 20.7 & 8.4 & \textbf{4.5} & 20.6 & 63.0 & 0.92 \\
-Eems & 15.3 & 4.4 & \textbf{2.1} & 15.1 & 35.8 & 0.93 \\
-Zeebrugge & 47.1 & 32.0 & \textbf{24.3} & 47.1 & 120.3 & 0.87 \\
-Dunkerque & 29.9 & -- & -- & 29.8 & 225.1 & 0.90 \\
-Grain & 19.6 & -- & -- & 19.7 & -- & 0.89 \\
-South Hook & 18.1 & -- & -- & 17.6 & -- & 0.91 \\
+Gate & 20.0 & 9.1 & \textbf{5.2} & 20.5 & 71.4 & 0.91 \\
+Zeebrugge & 46.5 & 28.3 & \textbf{22.6} & 46.3 & 123.2 & 0.85 \\
+Eems & 18.7 & -- & -- & 18.5 & 36.0 & 0.91 \\
+Dunkerque & 37.2 & -- & -- & 37.0 & 224.2 & 0.90 \\
+Grain & 27.2 & -- & -- & 27.1 & -- & 0.90 \\
+South Hook & 22.5 & -- & -- & 22.2 & -- & 0.91 \\
 \bottomrule
 \end{tabular}
-\caption{MAE (GWh/d), 821 walk-forward days per terminal, 2024-06--2026-08;
-bootstrap reference filter with bridge observations and adaptive-conformal
-bands. \todo{add the RBPF column (500 particles, 15$\times$ faster,
-comparable intraday, $p(\text{idle})$ output); describe horizons and the
-leak-freedom of every fit.}}
+\caption{MAE (GWh/day), walk-forward 2022-06 -- 2025-12 (1{,}552 days per
+terminal; Eems from its 2022 commissioning); cov90 is conformal coverage
+at nominal 0.90. Terminals without a usable public intraday feed run H0
+only. On the shorter post-crisis window (2024-06 -- 2026-08) the evening
+figures sharpen further (Gate 4.5, Eems 2.1).}
+\label{tab:eval}
 \end{table}
-\todo{Discussion: H0 ties persistence \emph{because} nominations are
-empirically worse than persistence and are rejected by the fitted weight —
-a data finding, not a modelling failure. Calibration: raw vs conformal,
-Gibbs--Cand\`es guarantee and its marginal-only nature.}
 
-\section{A physical stress index}
+Three structural readings. At the day-ahead horizon the filter ties
+persistence \emph{everywhere} --- correctly, because the only public
+day-ahead instrument (nominations) forecasts worse than persistence and
+the fitted blend weight rejects it; genuine day-ahead information would
+have to come from arrival pipelines and economics, which
+Section~\ref{sec:econ} prices. Where an intraday feed exists, the evening
+nowcast is 2--4$\times$ (post-crisis: 3--7$\times$) more accurate than
+any daily baseline, half a day before the official print
+(Figure~\ref{fig:bands}). And the uncertainty is honest: bands widen
+exactly at regime breaks, and conformal coverage holds through the
+crisis era.
+
+\begin{figure}[t]\centering
+\includegraphics[width=\linewidth]{figures/fig_nowcast_bands.png}
+\caption{Gate, June--August 2026: evening nowcast with 90\% band against
+the figure published the next morning. The band flares precisely at the
+outage cliffs.}
+\label{fig:bands}
+\end{figure}
+
+\section{A physical stress index, pre-registered for winter}
+\label{sec:stress}
+Tanks plus burn rate define \emph{days of cover} --- how long current
+send-out is physically sustainable without new cargoes. In-sample
+(2024--2026), adding cover to the market's standard dial (storage
+fullness) raises the AUC for predicting rare TTF jumps within 7--14 days
+from 0.77--0.80 to 0.85, and for UK price spikes from 0.62 to 0.73. We
+deliberately do not claim this: thresholds are in-sample, windows
+overlap, only two winters exist, and two components show
+seasonal-confounding signatures. The out-of-sample test is pre-registered
+and imminent: Europe entered September 2026 with storage at 65\% against
+a $\sim$90\% norm (Figure~\ref{fig:cover}), and the index will be scored
+live through winter 2026--27 with the archive as timestamped evidence.
+
 \begin{figure}[t]\centering
 \includegraphics[width=\linewidth]{figures/fig_cover.png}
-\caption{Days-of-cover and EU storage fullness entering winter 2026.
-\todo{caption polish.}}
+\caption{Days-of-cover and EU storage fullness entering winter 2026.}
+\label{fig:cover}
 \end{figure}
-\todo{Define days-of-cover; report the in-sample horse race — storage-\%
-alone AUC 0.77--0.80 on TTF q97.5 spikes, $+$cover 0.85 (SAP: 0.62
-$\to$ 0.73) — and give the caveats their own paragraph: in-sample
-thresholds, overlapping windows, two winters, seasonal confounding
-signatures in two components; specify the pre-registered out-of-sample
-design for winter 2026--27 (storage entered September at 65\% vs
-$\sim$90\% typical — the test will run live). Ship-pipeline layer:
-departures/chokepoints/berths sampling design and why mid-ocean satellite
-AIS is out of scope.}
 
-\section{Economic content: a bounded null}
-\todo{The event study: ordinary daily surprises ($\sigma \approx 109$ GWh)
-move front-month TTF $\le 0.16\%$ same-day, $|t| < 1$ over 564 trading
-days — a bound, consistent with damped-arbitrage structure; implications
-for where value can live (prompt products, tails, conditional windows).}
+\section{Economic content: a comprehensive negative}
+\label{sec:econ}
+Does any of this move markets, and can it be traded? We answer in three
+escalating tests, and the answer is a bounded, mechanism-consistent no at
+the daily horizon.
+
+\paragraph{Ordinary surprises are not priced.} Over 564 trading days, a
+one-sigma ($\approx$109\,GWh) aggregate send-out surprise moves
+front-month TTF by at most 0.16\% the same day, $|t|<1$ under
+heteroskedasticity-robust inference --- noise against 3--5\% daily
+volatility. Typical daily flow news is 1--3\% of regional demand and the
+front month ignores it.
+
+\paragraph{The backtest protocol.} Positions on front-month TTF at the
+daily close, from signals verifiably published before it;
+five-basis-point costs per unit turnover; continuous-contract roll
+windows excluded; online z-scoring with no lookahead; Newey--West
+$t$-statistics; every strategy variant counted against selection
+(eight tried); and a holdout (2026) frozen until the strategy set is
+final. Over 2018--2025 (1{,}642 tradable days, $\mathrm{se}(\mathrm{SR})
+\approx 0.39$):
+
+\begin{center}\small
+\begin{tabular}{lccccc}
+\toprule
+strategy & SR (net) & $t_{NW}$ & maxDD & active \\
+\midrule
+arrival drought & 0.82 & 2.16 & 95\% & 100\% \\
+12-day momentum & 0.77 & 2.03 & 88\% & 100\% \\
+$\Delta$cover (14d) & 0.19 & 0.53 & 116\% & 100\% \\
+cover level & $-0.18$ & $-0.45$ & 184\% & 100\% \\
+long-only & $-0.23$ & $-0.58$ & 306\% & 100\% \\
+storage fullness & $-0.66$ & $-1.66$ & 363\% & 100\% \\
+flow news (continuous) & $-0.69$ & $-1.80$ & 151\% & 41\% \\
+supply-break events & $-0.81$ & $-2.06$ & 92\% & 4\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent The discipline earned its keep twice. First, the development
+window's best strategy ($\Delta$cover, SR 1.50 on eighteen months)
+collapsed to 0.19 on full history --- selection luck, caught before the
+holdout. Second, the last live hope --- trading supply-break events
+detected intraday --- grew from 18 to 65 trades when the evaluation was
+extended into the crisis years and returned SR $-0.81$: not zero but
+\emph{wrong-signed}, with a coherent mechanism. At the daily horizon,
+causality runs from price to flows as much as the reverse: extreme prices
+themselves curtail send-out (diversions, slot cancellations), so
+supply-loss events cluster near price peaks, and buying them loses. The
+best surviving row is statistically indistinguishable from the plain
+momentum beside it over a window containing the 2021--22 rally, and
+neither clears best-of-eight selection. The market's standard stress
+dial, storage fullness, is itself a poor directional signal over 6.5
+years. The holdout remains frozen; nothing qualifies to touch it.
+
+\paragraph{Interpretation.} These results are jointly consistent with the
+damped-arbitrage structure of the LNG market
+\cite{arbitrage2014,realoption2020} and with daily closes efficiently
+impounding public physical information. What the nowcaster demonstrably
+supplies --- accuracy inside the day and calibrated uncertainty at
+breaks --- is valuable precisely at horizons and in instruments (prompt,
+within-day, volatility) that free daily data cannot test and retail
+access cannot reach. We state the monetization honestly: this is a
+measurement instrument, not a trading system.
 
 \section{Limitations}
-\todo{Own every weakness first: no historical satellite AIS (forward-only
-ship layer); Zeebrugge residual miscalibration; cov50 width; UK intraday
-horizons forward-only; stress study not yet out-of-sample; monetization
-honesty (ICE TTF granularity vs a student account).}
+No free historical satellite AIS exists, so the ship-pipeline layer of
+the stress index accrues forward-only and is unvalidated. The intraday
+Estimated-row finding rests on a young archive. Zeebrugge's transshipment
+traffic leaves residual miscalibration at its intraday horizons (raw
+coverage 0.65 at H2 in the crisis era; conformal repairs to 0.85).
+Interquartile bands run somewhat wide. The stress index's positive
+in-sample margin awaits its pre-registered winter. History floors bind:
+ENTSOG's LNG series begin 2021, the UK portal's in August 2021. And the
+backtest speaks only to daily-frequency, front-month, long/short
+directional trading --- the negative is broad but not universal.
 
 \section*{Reproducibility}
-All code, the snapshot archives, and every table's generating script are at
-\url{https://github.com/solwilliams6305/LNG-send-out-nowcasting}. Data
-sources are credited per their terms (GIE ALSI/AGSI as data source; ENTSOG;
-National Gas; aisstream.io). \todo{pin commit hash at submission.}
+All code, snapshot archives, and each table's generating script:
+\url{https://github.com/solwilliams6305/LNG-send-out-nowcasting}
+(\todo{pin commit at submission}). Data are credited per source terms
+(GIE ALSI/AGSI; ENTSOG; National Gas; aisstream.io); TTF prices were used
+for analysis only and are not redistributed. A live dashboard rebuilt from
+the same pipeline runs at the repository's Pages site.
 
-\begin{thebibliography}{9}
-\todo{Populate from the memo's reference list: Gibbs \& Cand\`es 2021/2024;
-Zaffran et al.\ 2022; Sch\"on--Gustafsson--Nordlund 2005; Lindsten--Jordan--
-Sch\"on 2014; Yu 2010 + JRSS-C 2025 zero-inflated HSMM; the AIS
-destination-quality papers; the MIRP survey; LNG arbitrage economics.}
+\begin{thebibliography}{9}\small
+\bibitem{gibbs2021} I.~Gibbs, E.~Cand\`es. Adaptive conformal inference
+under distribution shift. \emph{NeurIPS}, 2021.
+\bibitem{gibbs2024} I.~Gibbs, E.~Cand\`es. Conformal inference for online
+prediction with arbitrary distribution shifts. \emph{JMLR}, 25, 2024.
+\bibitem{sgn2005} T.~Sch\"on, F.~Gustafsson, P.-J.~Nordlund. Marginalized
+particle filters for mixed linear/nonlinear state-space models.
+\emph{IEEE Trans.\ Signal Processing}, 53(7), 2005.
+\bibitem{pgas2014} F.~Lindsten, M.~Jordan, T.~Sch\"on. Particle Gibbs
+with ancestor sampling. \emph{JMLR}, 15, 2014.
+\bibitem{hsmm} S.-Z.~Yu. Hidden semi-Markov models. \emph{Artificial
+Intelligence}, 174(2), 2010; and the zero-inflated HSMM with
+covariate-dependent sojourns of \emph{JRSS-C}, 74(2), 2025.
+\bibitem{eta_review} Systematic review of vessel arrival-time prediction,
+\emph{Maritime Policy \& Management}, 2025.
+\bibitem{aisdest} AIS destination-field quality studies: IEEE FUSION
+2019 (cleaning-matching, $+20\%$); TransNav/Springer 2019 (52.2\%
+erroneous, 1.3\% UN/LOCODE-conformant).
+\bibitem{mirp} Maritime inventory routing survey, \emph{Intl.\ Trans.\ in
+Operational Research}, 2023.
+\bibitem{arbitrage2014} Limits to inter-regional LNG arbitrage,
+\emph{Energy Economics}, 45, 2014.
+\bibitem{realoption2020} LNG diversion as a real option with
+regime-dependent value, \emph{Energy Economics}, 2020.
 \end{thebibliography}
 \end{document}
