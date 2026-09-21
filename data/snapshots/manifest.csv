@@ -66,3 +66,4 @@ snapshot_utc,entsog_rows,entsog_hourly_rows,alsi_rows,alsi_key_present,errors
 2026-09-20T14:38:13+00:00,1023,143,660,1125,660,444,True,True,
 2026-09-20T21:04:08+00:00,1073,164,675,1134,1044,450,True,True,
 2026-09-21T16:56:05+00:00,1068,153,0,1134,792,414,True,True,alsi: ALSI error: API key: 39de0b26a79f0cf003c4f3c2149d6277
+2026-09-21T22:16:05+00:00,1072,167,690,1134,1116,435,True,True,
